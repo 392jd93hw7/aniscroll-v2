@@ -266,7 +266,7 @@ function App() {
     title: item.title?.english || item.title?.romaji || item.title?.native || "Untitled anime",
     image: item.coverImage?.extraLarge || item.coverImage?.large || "https://placehold.co/300x440/17131f/e8dcff?text=Anime",
     banner: item.bannerImage || undefined,
-    synopsis: String(item.description || "").replace(/<br\s*\/?\s*>/gi, " ").replace(/<[^>]+>/g, " "),
+    synopsis: String(item.description || "").replace(/<br[^>]*>/gi, " ").replace(/<[^>]*>/g, " "),
     altTitle: item.title?.native || item.title?.romaji || "",
     score: item.averageScore ? (Number(item.averageScore) / 10).toFixed(1) : "—",
     year: Number(item.seasonYear || item.startDate?.year || new Date().getFullYear()),
