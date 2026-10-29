@@ -81,6 +81,7 @@ const MEDIA_FIELDS = `
   coverImage { extraLarge large }
   bannerImage
   genres
+  tags { name }
   season
   seasonYear
   startDate { year }
