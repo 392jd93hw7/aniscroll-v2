@@ -1870,7 +1870,7 @@ function App() {
                       {aniListCharacterEdges.map((edge: any) => {
                         const character = edge.node
                         const description = String(character.description || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
-                        const voiceActors = Array.isArray(character.voiceActors) ? character.voiceActors : []
+                        const voiceActors = Array.isArray(edge.voiceActors) ? edge.voiceActors : []
                         const characterUrl = character.siteUrl || "https://anilist.co/character/" + character.id
                         return (
                           <article className="character-card" key={character.id}>
