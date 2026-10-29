@@ -2157,7 +2157,7 @@ function App() {
                 <h2>No listed releases</h2>
                 <p>AniList has no upcoming anime episodes listed for {selectedScheduleDay.label.toLowerCase()}.</p>
               </div>
-            )
+            )}
           </div>
         )}
         {page === "Profile" && (
