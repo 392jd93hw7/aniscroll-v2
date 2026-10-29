@@ -406,7 +406,7 @@ function App() {
     setMoviesLoading(true)
     setMoviesError("")
     const params = new URLSearchParams({ page: String(moviesPage) })
-    if (term.length > 1) params.set("q", term)
+    if (term) params.set("q", term)
     void fetch("/api/anilist/movies?" + params.toString())
       .then((response) => {
         if (!response.ok) throw new Error("Movie catalog request failed")
@@ -892,7 +892,7 @@ function App() {
   const filtered = (page === "Movies" ? movieResults : catalog)
     .filter(
       (a) =>
-        a.title.toLowerCase().includes(query.toLowerCase()) &&
+        (page === "Movies" || a.title.toLowerCase().includes(query.toLowerCase())) &&
         (genre === "All genres" || a.genre === genre || a.genres?.includes(genre) || a.tags?.includes(genre)) &&
         (year === "All years" || String(a.year) === year) &&
         (seasonFilter === "All seasons" ||
