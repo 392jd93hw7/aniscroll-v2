@@ -1,5 +1,6 @@
 import express from "express"
 import path from "node:path"
+import { readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 
 const app = express()
@@ -73,6 +74,135 @@ const MEDIA_FIELDS = `
   format
   studios(isMain: true) { nodes { name } }
 `
+
+function slugify(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+}
+
+function publicOrigin(req) {
+  const configured = String(process.env.PUBLIC_SITE_URL || "").trim().replace(/\/+$/, "")
+  return configured || (req.protocol + "://" + req.get("host"))
+}
+
+async function sendAnimeSeoIndex(req, res, next, slug, mode, season = 1, episode = 1) {
+  try {
+    const search = String(slug || "").split("-").filter(Boolean).join(" ")
+    const query = "query($search: String!) { Page(page: 1, perPage: 8) { media(type: ANIME, search: $search, sort: [SEARCH_MATCH], isAdult: false) { " + MEDIA_FIELDS + " } } }"
+    const data = await queryAniList(query, { search })
+    const candidates = data.Page.media || []
+    const animeSlug = (item) => [item.title?.english, item.title?.romaji, item.title?.native].map(slugify).find(Boolean)
+    const anime = candidates.find((item) => [item.title?.english, item.title?.romaji, item.title?.native].some((name) => slugify(name) === slug)) || candidates[0]
+    if (!anime) return next()
+
+    const name = anime.title?.english || anime.title?.romaji || anime.title?.native || "Anime"
+    const description = String(anime.description || "Explore the story, episodes, and details for " + name + ".").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 280)
+    const origin = publicOrigin(req)
+    const canonicalPath = mode === "watch"
+      ? "/watch/" + slugify(name) + "/season-" + season + "/episode-" + episode
+      : "/anime/" + (animeSlug(anime) || slugify(name))
+    const canonical = origin + canonicalPath
+    const pageTitle = mode === "watch"
+      ? "Watch " + name + " Season " + season + " Episode " + episode + " | Aniscroll"
+      : name + " Anime — Synopsis, Episodes & Info | Aniscroll"
+    const image = anime.bannerImage || anime.coverImage?.extraLarge || anime.coverImage?.large || ""
+    const structured = {
+      "@context": "https://schema.org",
+      "@type": anime.format === "MOVIE" ? "Movie" : "TVSeries",
+      name,
+      description,
+      image: image || undefined,
+      datePublished: anime.startDate?.year || anime.seasonYear || undefined,
+      genre: anime.genres || undefined,
+      url: canonical,
+      aggregateRating: anime.averageScore ? {
+        "@type": "AggregateRating",
+        ratingValue: Number(anime.averageScore) / 10,
+        bestRating: 10,
+      } : undefined,
+    }
+    const jsonLd = JSON.stringify(structured).replace(/</g, "\\u003c")
+    const seoBlock = [
+      "<!-- SEO_DYNAMIC_START -->",
+      "<title>" + escapeHtml(pageTitle) + "</title>",
+      '<meta name="description" content="' + escapeHtml(description) + '" />',
+      '<meta name="robots" content="index,follow" />',
+      '<link rel="canonical" href="' + escapeHtml(canonical) + '" />',
+      '<meta property="og:type" content="' + (anime.format === "MOVIE" ? "video.movie" : "video.tv_show") + '" />',
+      '<meta property="og:title" content="' + escapeHtml(pageTitle) + '" />',
+      '<meta property="og:description" content="' + escapeHtml(description) + '" />',
+      '<meta property="og:url" content="' + escapeHtml(canonical) + '" />',
+      '<meta property="og:image" content="' + escapeHtml(image) + '" />',
+      '<meta name="twitter:card" content="summary_large_image" />',
+      '<meta name="twitter:title" content="' + escapeHtml(pageTitle) + '" />',
+      '<meta name="twitter:description" content="' + escapeHtml(description) + '" />',
+      '<script id="anime-structured-data" type="application/ld+json">' + jsonLd + "</script>",
+      "<!-- SEO_DYNAMIC_END -->",
+    ].join("\n")
+    const html = await readFile(path.join(DIST, "index.html"), "utf8")
+    const marker = /<!-- SEO_DYNAMIC_START -->[\s\S]*?<!-- SEO_DYNAMIC_END -->/
+    if (!marker.test(html)) return next()
+    res.set("Cache-Control", "public, max-age=300")
+    return res.type("html").send(html.replace(marker, seoBlock))
+  } catch {
+    return next()
+  }
+}
+
+app.get("/robots.txt", (req, res) => {
+  const origin = publicOrigin(req)
+  res.type("text/plain").send([
+    "User-agent: *",
+    "Allow: /",
+    "Disallow: /profile",
+    "Disallow: /watchlist",
+    "Disallow: /admin",
+    "Disallow: /sign-in",
+    "Sitemap: " + origin + "/sitemap.xml",
+    "",
+  ].join("\n"))
+})
+
+app.get("/sitemap.xml", async (req, res) => {
+  const origin = publicOrigin(req)
+  const paths = new Set(["/", "/discover", "/anime", "/movies"])
+  try {
+    const query = "query { Page(page: 1, perPage: 50) { media(type: ANIME, sort: [TRENDING_DESC, POPULARITY_DESC], isAdult: false) { title { english romaji native } } } }"
+    const data = await queryAniList(query)
+    for (const item of data.Page.media || []) {
+      const title = item.title?.english || item.title?.romaji || item.title?.native
+      if (title) paths.add("/anime/" + slugify(title))
+    }
+  } catch {
+    // Keep a usable sitemap containing the main public browse routes.
+  }
+  const today = new Date().toISOString().slice(0, 10)
+  const urls = Array.from(paths).map((route) => "<url><loc>" + escapeHtml(origin + route) + "</loc><lastmod>" + today + "</lastmod></url>")
+  res.set("Cache-Control", "public, max-age=900")
+  res.type("application/xml").send('<?xml version="1.0" encoding="UTF-8"?>' + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls.join("") + "</urlset>")
+})
+
+app.get("/anime/:slug", (req, res, next) => {
+  void sendAnimeSeoIndex(req, res, next, req.params.slug, "detail")
+})
+
+app.get("/watch/:slug/season-:season/episode-:episode", (req, res, next) => {
+  const season = Number(req.params.season)
+  const episode = Number(req.params.episode)
+  if (!Number.isSafeInteger(season) || season < 1 || !Number.isSafeInteger(episode) || episode < 1) return res.status(400).send("Invalid anime episode route")
+  void sendAnimeSeoIndex(req, res, next, req.params.slug, "watch", season, episode)
+})
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, service: "aniscroll-api" }))
 
