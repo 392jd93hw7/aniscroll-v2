@@ -719,7 +719,7 @@ function App() {
                 const status = e.target.value as LibraryStatus
                 setStatuses((s) => ({ ...s, [a.title]: status }))
                 if (saved.includes(a.title)) void persistWatchlist(a, status)
-              }
+              }}
             >
               {libraryStatuses.map((s) => (
                 <option key={s}>{s}</option>
