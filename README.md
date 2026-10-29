@@ -14,6 +14,24 @@ npm run dev
 
 Vite runs at http://localhost:5173 and proxies `/api` requests to Express on port 3001. Build with `npm run build`; `npm start` serves the built app and API on `PORT` (default 3001).
 
+## Frontend page structure
+
+Page-specific JSX lives in `src/pages/`, with each route in its own file:
+
+- `HomePage.tsx` — home and featured sections.
+- `DiscoverPage.tsx` — discover browse entry point.
+- `AnimePage.tsx` — anime catalog browse entry point.
+- `MoviesPage.tsx` — movie catalog and pagination entry point.
+- `BrowsePage.tsx` — shared browse layout used by Discover, Anime, and Movies.
+- `AnimeDetailsPage.tsx` — anime overview, characters, relations, and recommendations.
+- `WatchPage.tsx` — player, episode controls, and server selection.
+- `WatchlistPage.tsx` — saved titles and library views.
+- `SchedulePage.tsx` — upcoming airing schedule.
+- `ProfilePage.tsx` — profile and preferences.
+- `AdminPage.tsx` — catalog metadata administration.
+- `AuthPage.tsx` — sign-in, sign-up, and password recovery.
+
+`src/context/AppPageContext.tsx` passes the existing app state and actions to page components. `src/App.tsx` remains the shared app controller and shell for navigation, metadata loading, URL routing, and the site header/footer; page markup is kept in the page modules.
 ## SEO-friendly routes
 
 Anime detail pages use `/anime/{anime-title-slug}` and episode pages use `/watch/{anime-title-slug}/season-{season}/episode-{episode}`. Browse navigation uses clean paths such as `/discover`, `/movies`, and `/schedule`; direct links and browser back/forward navigation are supported. The app updates the page title, description, canonical URL, Open Graph/Twitter metadata, and Anime structured data. In production, Express also emits route-specific metadata in the initial HTML and serves `/robots.txt` and `/sitemap.xml`.
