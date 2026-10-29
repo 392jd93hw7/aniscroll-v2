@@ -329,6 +329,12 @@ app.get("/api/anilist/:id/details", async (req, res) => {
               gender
               age
               siteUrl
+              voiceActors(language: JAPANESE) {
+                id
+                name { full }
+                image { large }
+                siteUrl
+              }
             }
           }
         }
