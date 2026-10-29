@@ -837,7 +837,7 @@ function App() {
             <section
               className="hero"
               style={{
-                backgroundImage: `url(${kitsuAnime?.banner || (slide === 0 ? hero.image : (hero.banner || hero.image))})`,
+                backgroundImage: `url(${hero.title === selected.title && kitsuAnime?.banner ? kitsuAnime.banner : (slide === 0 ? hero.image : (hero.banner || hero.image))})`,
               }}
             >
               <div className="hero-shade" />
