@@ -26,6 +26,10 @@ The Schedule page calls AniList's `Page.airingSchedules` query for the next seve
 
 Search, trending, URL resolution, sitemap generation, and server-rendered anime metadata query both `isAdult: false` and `isAdult: true` and merge the entries by AniList ID. AniList records marked for 18+ audiences remain discoverable and display an **18+** badge. This is a catalog filter setting, not an age-verification system; add appropriate age gating and follow the laws and provider terms applicable to your deployment.
 
+## AniList-powered anime detail pages
+
+Anime detail pages fetch character profiles (including character images, roles, biographies, and Japanese voice-actor names), franchise relations, ranked recommendations, and expanded title metadata from AniList. These are loaded through `/api/anilist/:id/details` and appear in the Characters, Related Anime, and Overview tabs. Character and recommendation connections are limited to a page of results so the page stays responsive.
+
 ## Data and playback
 
 - **AniList** supplies canonical anime IDs and anime-level metadata through GraphQL.
