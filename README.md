@@ -20,6 +20,12 @@ Anime detail pages use `/anime/{anime-title-slug}` and episode pages use `/watch
 
 Set `PUBLIC_SITE_URL` in the production environment to your real public origin (for example, `https://your-domain.com`, without a trailing slash) so sitemap and canonical URLs use the public domain. For production SEO, deploy the built app with `npm run build` followed by `npm start`; the Vite development server is for development and serves a generic HTML shell before React runs.
 
+## Schedule and adult catalog
+
+The Schedule page calls AniList's `Page.airingSchedules` query for the next seven local calendar days, paginates releases, and renders each airing date and time in the visitor's local timezone. The homepage's “Coming up next” section uses the same live data. Empty dates are shown as empty rather than reusing placeholder titles or times.
+
+Search, trending, URL resolution, sitemap generation, and server-rendered anime metadata query both `isAdult: false` and `isAdult: true` and merge the entries by AniList ID. AniList records marked for 18+ audiences remain discoverable and display an **18+** badge. This is a catalog filter setting, not an age-verification system; add appropriate age gating and follow the laws and provider terms applicable to your deployment.
+
 ## Data and playback
 
 - **AniList** supplies canonical anime IDs and anime-level metadata through GraphQL.
