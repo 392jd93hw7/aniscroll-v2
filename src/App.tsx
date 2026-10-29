@@ -271,6 +271,8 @@ function App() {
     [remoteAnime, setRemoteAnime] = useState<Anime[]>([]),
     [aniListId, setAniListId] = useState<number | null>(null),
     [aniListMeta, setAniListMeta] = useState<any>(null),
+    [aniListDetails, setAniListDetails] = useState<any>(null),
+    [aniListDetailsLoading, setAniListDetailsLoading] = useState(false),
     [kitsuAnime, setKitsuAnime] = useState<any>(null),
     [kitsuEpisodes, setKitsuEpisodes] = useState<any[]>([]),
     [streamServer, setStreamServer] = useState("HD-1"),
@@ -378,17 +380,20 @@ function App() {
         const id = Number(resolved.anime?.id)
         if (!id) throw new Error("No AniList ID found")
         setAniListId(id)
-        const [aniData, kitsuData] = await Promise.all([
+        setAniListDetailsLoading(true)
+        const [aniData, kitsuData, detailsData] = await Promise.all([
           fetch("/api/anilist/" + id).then((r) => r.ok ? r.json() : Promise.reject(new Error("AniList metadata unavailable"))),
           fetch("/api/kitsu/" + id).then((r) => r.ok ? r.json() : Promise.reject(new Error("Kitsu metadata unavailable"))),
+          fetch("/api/anilist/" + id + "/details").then((r) => r.ok ? r.json() : { details: null }).catch(() => ({ details: null })),
         ])
         if (!active) return
         setAniListMeta(aniData.anime || resolved.anime || null)
+        setAniListDetails(detailsData.details || null)
         setKitsuAnime(kitsuData.anime || null)
         setKitsuEpisodes(Array.isArray(kitsuData.episodes) ? kitsuData.episodes : [])
       } catch {
-        if (active) { setAniListId(selected.id ? Number(selected.id) : null); setAniListMeta(null); setKitsuAnime(null); setKitsuEpisodes([]) }
-      } finally { if (active) setMetadataLoading(false) }
+        if (active) { setAniListId(selected.id ? Number(selected.id) : null); setAniListMeta(null); setAniListDetails(null); setKitsuAnime(null); setKitsuEpisodes([]) }
+      } finally { if (active) { setMetadataLoading(false); setAniListDetailsLoading(false) } }
     }
     void loadMetadata()
     return () => { active = false }
@@ -539,7 +544,7 @@ function App() {
     )
   }
   const detail = (a: Anime) => {
-    if (selected.title !== a.title) { setAniListId(a.id ? Number(a.id) : null); setAniListMeta(null); setKitsuAnime(null); setKitsuEpisodes([]) }
+    if (selected.title !== a.title) { setAniListId(a.id ? Number(a.id) : null); setAniListMeta(null); setAniListDetails(null); setKitsuAnime(null); setKitsuEpisodes([]) }
     setSelected(a)
     setSeason(1)
     setReadMore(false)
@@ -817,7 +822,7 @@ function App() {
     )
   const watch = (a: Anime, e = 1, s = 1) => {
     const previous = history[a.title]
-    if (selected.title !== a.title) { setAniListId(a.id ? Number(a.id) : null); setAniListMeta(null); setKitsuAnime(null); setKitsuEpisodes([]) }
+    if (selected.title !== a.title) { setAniListId(a.id ? Number(a.id) : null); setAniListMeta(null); setAniListDetails(null); setKitsuAnime(null); setKitsuEpisodes([]) }
     setSelected(a)
     setEpisode(e)
     setSeason(s)
