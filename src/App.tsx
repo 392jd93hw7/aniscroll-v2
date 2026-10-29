@@ -382,8 +382,8 @@ function App() {
         setAniListId(id)
         setAniListDetailsLoading(true)
         const [aniData, kitsuData, detailsData] = await Promise.all([
-          fetch("/api/anilist/" + id).then((r) => r.ok ? r.json() : Promise.reject(new Error("AniList metadata unavailable"))),
-          fetch("/api/kitsu/" + id).then((r) => r.ok ? r.json() : Promise.reject(new Error("Kitsu metadata unavailable"))),
+          fetch("/api/anilist/" + id).then((r) => r.ok ? r.json() : { anime: resolved.anime }).catch(() => ({ anime: resolved.anime })),
+          fetch("/api/kitsu/" + id).then((r) => r.ok ? r.json() : { anime: null, episodes: [] }).catch(() => ({ anime: null, episodes: [] })),
           fetch("/api/anilist/" + id + "/details").then((r) => r.ok ? r.json() : { details: null }).catch(() => ({ details: null })),
         ])
         if (!active) return
