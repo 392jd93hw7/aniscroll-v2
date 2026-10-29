@@ -75,6 +75,7 @@ async function queryAniList(query, variables = {}) {
 const MEDIA_FIELDS = `
   id
   idMal
+  isAdult
   title { romaji english native }
   description(asHtml: false)
   coverImage { extraLarge large }
@@ -92,6 +93,17 @@ const MEDIA_FIELDS = `
   studios(isMain: true) { nodes { name } }
 `
 
+async function queryAniListMedia({ search = null, perPage = 24, sort = ["POPULARITY_DESC"] } = {}) {
+  const query = "query($search: String, $perPage: Int!, $sort: [MediaSort], $isAdult: Boolean!) { Page(page: 1, perPage: $perPage) { media(type: ANIME, search: $search, sort: $sort, isAdult: $isAdult) { " + MEDIA_FIELDS + " } } }"
+  // isAdult filters one category at a time, so merge both results by AniList ID.
+  const variants = await Promise.all([false, true].map(async (isAdult) => {
+    const data = await queryAniList(query, { search, perPage, sort, isAdult })
+    return data.Page.media || []
+  }))
+  const unique = new Map()
+  for (const item of variants.flat()) unique.set(Number(item.id), item)
+  return Array.from(unique.values())
+}
 function slugify(value) {
   return String(value || "")
     .toLowerCase()
@@ -116,9 +128,7 @@ function publicOrigin(req) {
 async function sendAnimeSeoIndex(req, res, next, slug, mode, season = 1, episode = 1) {
   try {
     const search = String(slug || "").split("-").filter(Boolean).join(" ")
-    const query = "query($search: String!) { Page(page: 1, perPage: 8) { media(type: ANIME, search: $search, sort: [SEARCH_MATCH], isAdult: false) { " + MEDIA_FIELDS + " } } }"
-    const data = await queryAniList(query, { search })
-    const candidates = data.Page.media || []
+    const candidates = await queryAniListMedia({ search, perPage: 8, sort: ["SEARCH_MATCH"] })
     const animeSlug = (item) => [item.title?.english, item.title?.romaji, item.title?.native].map(slugify).find(Boolean)
     const anime = candidates.find((item) => [item.title?.english, item.title?.romaji, item.title?.native].some((name) => slugify(name) === slug)) || candidates[0]
     if (!anime) return next()
@@ -191,9 +201,8 @@ app.get("/sitemap.xml", async (req, res) => {
   const origin = publicOrigin(req)
   const paths = new Set(["/", "/discover", "/anime", "/movies"])
   try {
-    const query = "query { Page(page: 1, perPage: 50) { media(type: ANIME, sort: [TRENDING_DESC, POPULARITY_DESC], isAdult: false) { title { english romaji native } } } }"
-    const data = await queryAniList(query)
-    for (const item of data.Page.media || []) {
+    const items = await queryAniListMedia({ perPage: 50, sort: ["TRENDING_DESC", "POPULARITY_DESC"] })
+    for (const item of items) {
       const title = item.title?.english || item.title?.romaji || item.title?.native
       if (title) paths.add("/anime/" + slugify(title))
     }
@@ -218,11 +227,27 @@ app.get("/watch/:slug/season-:season/episode-:episode", (req, res, next) => {
 
 app.get("/api/health", (_req, res) => res.json({ ok: true, service: "aniscroll-api" }))
 
+app.get("/api/anilist/schedule", async (req, res) => {
+  const now = Math.floor(Date.now() / 1000)
+  const from = Number(req.query.from ?? now)
+  const to = Number(req.query.to ?? (now + 7 * 24 * 60 * 60))
+  if (!Number.isSafeInteger(from) || !Number.isSafeInteger(to) || from < 0 || to <= from || to - from > 15 * 24 * 60 * 60) {
+    return res.status(400).json({ error: "Provide a valid schedule range of up to 15 days." })
+  }
+  try {
+    const query = "query($from: Int!, $to: Int!) { Page(page: 1, perPage: 50) { airingSchedules(airingAt_greater: $from, airingAt_lesser: $to, sort: TIME) { id airingAt timeUntilAiring episode media { " + MEDIA_FIELDS + " } } } }"
+    const data = await queryAniList(query, { from, to })
+    const results = (data.Page.airingSchedules || []).filter((item) => item.media).sort((a, b) => a.airingAt - b.airingAt)
+    res.set("Cache-Control", "public, max-age=300")
+    res.json({ results })
+  } catch {
+    res.status(502).json({ error: "AniList airing schedule is temporarily unavailable" })
+  }
+})
 app.get("/api/anilist/trending", async (_req, res) => {
   try {
-    const query = `query { Page(page: 1, perPage: 24) { media(type: ANIME, sort: [TRENDING_DESC, POPULARITY_DESC], isAdult: false) { ${MEDIA_FIELDS} } } }`
-    const data = await queryAniList(query)
-    res.json({ results: data.Page.media })
+    const results = await queryAniListMedia({ perPage: 24, sort: ["TRENDING_DESC", "POPULARITY_DESC"] })
+    res.json({ results })
   } catch {
     res.status(502).json({ error: "AniList is temporarily unavailable" })
   }
@@ -232,9 +257,8 @@ app.get("/api/anilist/search", async (req, res) => {
   const search = String(req.query.q || "").trim().slice(0, 100)
   if (search.length < 2) return res.status(400).json({ error: "Search needs at least two characters" })
   try {
-    const query = `query($search: String!) { Page(page: 1, perPage: 24) { media(type: ANIME, search: $search, sort: [SEARCH_MATCH], isAdult: false) { ${MEDIA_FIELDS} } } }`
-    const data = await queryAniList(query, { search })
-    res.json({ results: data.Page.media })
+    const results = await queryAniListMedia({ search, perPage: 24, sort: ["SEARCH_MATCH"] })
+    res.json({ results })
   } catch {
     res.status(502).json({ error: "AniList search failed" })
   }
@@ -244,9 +268,7 @@ app.get("/api/anilist/resolve", async (req, res) => {
   const title = String(req.query.title || "").trim().slice(0, 120)
   if (!title) return res.status(400).json({ error: "A title is required" })
   try {
-    const query = `query($search: String!) { Page(page: 1, perPage: 8) { media(type: ANIME, search: $search, sort: [SEARCH_MATCH], isAdult: false) { ${MEDIA_FIELDS} } } }`
-    const data = await queryAniList(query, { search: title })
-    const candidates = data.Page.media || []
+    const candidates = await queryAniListMedia({ search: title, perPage: 8, sort: ["SEARCH_MATCH"] })
     const normalize = (value) => String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
     const exact = candidates.find((item) => [item.title?.english, item.title?.romaji, item.title?.native].some((name) => normalize(name) === normalize(title)))
     const anime = exact || candidates[0]
