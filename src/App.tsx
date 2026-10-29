@@ -315,6 +315,12 @@ function App() {
     [compact, setCompact] = useState(false),
     [reminders, setReminders] = useState<string[]>([]),
     [remoteAnime, setRemoteAnime] = useState<Anime[]>([]),
+    [movieResults, setMovieResults] = useState<Anime[]>([]),
+    [moviesPage, setMoviesPage] = useState(1),
+    [moviesHasNextPage, setMoviesHasNextPage] = useState(false),
+    [moviesLoading, setMoviesLoading] = useState(false),
+    [moviesError, setMoviesError] = useState(""),
+    [moviesReloadNonce, setMoviesReloadNonce] = useState(0),
     [aniListId, setAniListId] = useState<number | null>(null),
     [aniListMeta, setAniListMeta] = useState<any>(null),
     [aniListDetails, setAniListDetails] = useState<any>(null),
@@ -379,6 +385,7 @@ function App() {
     } catch { /* storage may be disabled */ }
   }, [saved, statuses, history, preferences])
   useEffect(() => {
+    if (page === "Movies") return
     let active = true
     const term = query.trim()
     const timer = window.setTimeout(async () => {
@@ -391,7 +398,31 @@ function App() {
       } catch { /* keep curated fallback catalog */ }
     }, term.length > 1 ? 260 : 50)
     return () => { active = false; window.clearTimeout(timer) }
-  }, [query])
+  }, [query, page])
+  useEffect(() => {
+    if (page !== "Movies") return
+    let active = true
+    const term = query.trim()
+    setMoviesLoading(true)
+    setMoviesError("")
+    const params = new URLSearchParams({ page: String(moviesPage) })
+    if (term.length > 1) params.set("q", term)
+    void fetch("/api/anilist/movies?" + params.toString())
+      .then((response) => {
+        if (!response.ok) throw new Error("Movie catalog request failed")
+        return response.json()
+      })
+      .then((payload) => {
+        if (!active) return
+        setMovieResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
+        setMoviesHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
+      })
+      .catch(() => {
+        if (active) { setMovieResults([]); setMoviesHasNextPage(false); setMoviesError("Could not load movies from AniList. Please try again.") }
+      })
+      .finally(() => { if (active) setMoviesLoading(false) })
+    return () => { active = false }
+  }, [page, query, moviesPage, moviesReloadNonce])
   useEffect(() => {
     if (page !== "Schedule" && page !== "Home") return
     let active = true
@@ -858,15 +889,14 @@ function App() {
       )
     }
   }
-  const filtered = catalog
+  const filtered = (page === "Movies" ? movieResults : catalog)
     .filter(
       (a) =>
         a.title.toLowerCase().includes(query.toLowerCase()) &&
         (genre === "All genres" || a.genre === genre || a.genres?.includes(genre) || a.tags?.includes(genre)) &&
         (year === "All years" || String(a.year) === year) &&
         (seasonFilter === "All seasons" ||
-          (storyFor(a.title)?.season || "All") === seasonFilter) &&
-        (page !== "Movies" || isFilm(a.title)),
+          (storyFor(a.title)?.season || "All") === seasonFilter),
     )
     .sort((a, b) =>
       sort === "Highest rated"
@@ -1518,10 +1548,10 @@ function App() {
                 type="search"
                 placeholder="Search your next favorite anime…"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => { setQuery(e.target.value); setMoviesPage(1) }}
               />
               {query && (
-                <button aria-label="Clear search" onClick={() => setQuery("")}>
+                <button aria-label="Clear search" onClick={() => { setQuery(""); setMoviesPage(1) }}>
                   <Icon name="close" />
                 </button>
               )}
@@ -1529,7 +1559,7 @@ function App() {
             <div className="trending-search">
               <span>Trending searches</span>
               {["Solo Leveling", "Frieren", "Jujutsu Kaisen"].map((t) => (
-                <button onClick={() => setQuery(t)} key={t}>
+                <button onClick={() => { setQuery(t); setMoviesPage(1) }} key={t}>
                   {t} ↗
                 </button>
               ))}
@@ -1599,6 +1629,7 @@ function App() {
                   setGenre("All genres")
                   setYear("All years")
                   setSeasonFilter("All seasons")
+                  setMoviesPage(1)
                 }}
               >
                 Reset filters
@@ -1613,18 +1644,12 @@ function App() {
               </button>
             </div>
             <div className="results-heading">
-              <h2>{query ? `Results for “${query}”` : "Explore all anime"}</h2>
+              <h2>{query ? `Results for “${query}”` : page === "Movies" ? "Explore anime movies" : "Explore all anime"}</h2>
               <span aria-live="polite" role="status">
-                {
-                  (page === "Movies"
-                    ? filtered.filter((a) => a.title === featured.title)
-                    : filtered
-                  ).length
-                }{" "}
-                titles
+{filtered.length}{" "}{page === "Movies" ? `titles · page ${moviesPage} · 30 per page` : "titles"}
               </span>
             </div>
-            {loading ? (
+            {(loading || (page === "Movies" && moviesLoading)) ? (
               <div
                 className="results-grid"
                 aria-label="Updating anime results"
@@ -1640,13 +1665,25 @@ function App() {
               </div>
             ) : (
               <div className={`results-grid ${compact ? "compact" : ""}`}>
-                {(page === "Movies"
-                  ? filtered.filter((a) => a.title === featured.title)
-                  : filtered
-                ).map(card)}
+                {filtered.map(card)}
               </div>
             )}
-            {!loading && !filtered.length && (
+            {page === "Movies" && !moviesLoading && (
+              <div className="movies-pagination" aria-label="Movie pages">
+                <button className="button glass" disabled={moviesPage <= 1} onClick={() => setMoviesPage((current) => Math.max(1, current - 1))}>Previous</button>
+                <span>Page {moviesPage} <small>· 30 movies per page</small></span>
+                <button className="button glass" disabled={!moviesHasNextPage} onClick={() => setMoviesPage((current) => current + 1)}>Next</button>
+              </div>
+            )}
+            {!loading && page === "Movies" && moviesError && !movieResults.length && (
+              <div className="empty-state" role="status">
+                <Icon name="info" size={38} />
+                <h2>Movies unavailable</h2>
+                <p>{moviesError}</p>
+                <button className="button purple" onClick={() => setMoviesReloadNonce((value) => value + 1)}>Try again</button>
+              </div>
+            )}
+            {!loading && !filtered.length && !(page === "Movies" && moviesError) && (
               <div className="empty-state">
                 <Icon name="search" size={42} />
                 <h2>No stories found. Yet.</h2>
