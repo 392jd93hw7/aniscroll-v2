@@ -397,3 +397,26 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .stream-picker-group button.selected { color: white; border-color: #a179ff; background: linear-gradient(135deg,#9b66ff,#7442dc); box-shadow: 0 5px 18px #8b5cf628; }
 .stream-picker p { flex: 1 1 100%; color: #817b8c; font-size: 11px; line-height: 1.6; }
 @media (max-width: 760px) { .stream-picker { align-items: flex-start; gap: 14px; padding: 12px; } .stream-picker-group { flex-wrap: wrap; } .stream-picker-group > span { flex: 0 0 100%; } .stream-picker-group button { min-width: 58px; height: 40px; } }
+
+
+/* Admin dashboard */
+.admin-page { padding-bottom: 80px; }
+.admin-summary-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:24px 0; }
+.admin-summary-card, .admin-form, .admin-records { border:1px solid var(--line, #302d3a); background:var(--surface, #111116); border-radius:12px; padding:20px; }
+.admin-summary-card { display:flex; flex-direction:column; gap:12px; }
+.admin-summary-card span, .admin-record span, .admin-form-heading > span { color:var(--muted, #9d97ac); font-size:12px; }
+.admin-summary-card strong { font-size:30px; }
+.admin-form { display:grid; gap:14px; margin:20px 0; max-width:900px; }
+.admin-form-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.admin-form-heading h2 { margin:0; font-size:18px; }
+.admin-form-heading p { margin:6px 0 0; }
+.admin-form label { display:grid; gap:8px; color:var(--text, #f6f3fc); font-size:13px; }
+.admin-form input:not([type=checkbox]), .admin-form textarea { width:100%; min-width:0; border:1px solid var(--line, #302d3a); border-radius:8px; padding:12px 13px; color:inherit; background:#0b0a10; font:inherit; }
+.admin-checks { display:flex; gap:22px; flex-wrap:wrap; }
+.admin-checks label { display:flex; align-items:center; gap:8px; }
+.admin-open-button { margin:18px 0; }
+.admin-records { margin-top:22px; }
+.admin-record { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:14px 0; border-top:1px solid var(--line, #302d3a); }
+.admin-record > div { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.admin-record strong { overflow-wrap:anywhere; }
+@media (max-width:720px) { .admin-summary-grid { grid-template-columns:1fr; } .admin-form, .admin-records { padding:14px; } .admin-record { align-items:flex-start; } }
