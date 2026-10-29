@@ -621,11 +621,13 @@ function App() {
   }, [page, selected.title, episode, season, progress])
   useEffect(() => {
     if (page !== "Player" || progress < 100) return
-    if (autoplay && episode < Math.max(kitsuEpisodes.length, storyFor(selected.title)?.episodes.length || 1)) {
-      setEpisode((e) => e + 1)
+    if (autoplay && episode < episodeCount) {
+      const next = episode + 1
+      setEpisode(next)
       setProgress(0)
+      writePath(watchPath(selected.title, season, next))
     } else setPlaying(false)
-  }, [progress, autoplay, episode, page, selected.title])
+  }, [progress, autoplay, episode, page, selected.title, season, episodeCount])
   useEffect(() => {
     if (!playing || playerSettings || !controlsVisible) return
     const id = window.setTimeout(() => setControlsVisible(false), 3500)
@@ -689,9 +691,53 @@ function App() {
     seasons: 1,
     episodes: ["Episode 1"],
   }
-  const episodeTitles: string[] = kitsuEpisodes.length ? kitsuEpisodes.map((ep) => String(ep.title || ("Episode " + ep.number))) : info.episodes
+  const rawEpisodeTitles: string[] = kitsuEpisodes.length
+    ? kitsuEpisodes.map((ep) => String(ep.title || ("Episode " + ep.number)))
+    : info.episodes
+  const anilistStatus = String(aniListMeta?.status || "")
+  const nextAiringEpisodeNumber = Number(aniListMeta?.nextAiringEpisode?.episode || 0)
+  const announcedEpisodeCount = Number(aniListMeta?.episodes || 0)
+  const datedKitsuEpisodes = kitsuEpisodes.filter((ep) =>
+    ep.airdate && Number.isFinite(Date.parse(String(ep.airdate))),
+  )
+  const airedKitsuEpisodeLimit = datedKitsuEpisodes
+    .filter((ep) => Date.parse(String(ep.airdate)) <= Date.now())
+    .reduce((max, ep) => Math.max(max, Number(ep.number) || 0), 0)
+  let availableEpisodeLimit = rawEpisodeTitles.length
+  if (isFilm(selected.title)) {
+    availableEpisodeLimit = 1
+  } else if (anilistStatus === "FINISHED") {
+    availableEpisodeLimit = announcedEpisodeCount || rawEpisodeTitles.length
+  } else if (anilistStatus === "NOT_YET_RELEASED") {
+    availableEpisodeLimit = 0
+  } else if (nextAiringEpisodeNumber > 0) {
+    // AniList's next airing episode is the next unreleased episode.
+    availableEpisodeLimit = Math.max(0, nextAiringEpisodeNumber - 1)
+  } else if (anilistStatus === "RELEASING") {
+    // If AniList has no next airing record, trust dated Kitsu releases. Never expose the full announced count.
+    availableEpisodeLimit = datedKitsuEpisodes.length
+      ? airedKitsuEpisodeLimit
+      : Math.max(1, Math.min(rawEpisodeTitles.length, Number(history[selected.title]?.episode || 1)))
+  }
+  const episodeTitles = rawEpisodeTitles.slice(0, Math.max(0, Math.min(rawEpisodeTitles.length, availableEpisodeLimit)))
   const duration = runtimeFor(selected.title)
-  const episodeCount = Math.max(1, episodeTitles.length)
+  const episodeCount = episodeTitles.length
+  useEffect(() => {
+    if (page !== "Player" || metadataLoading) return
+    if (episodeCount === 0) {
+      setPlaying(false)
+      setPage("Details")
+      writePath(animePath(selected.title), true)
+      return
+    }
+    if (episode > episodeCount) {
+      setEpisode(episodeCount)
+      setProgress(0)
+      setPlaying(false)
+      writePath(watchPath(selected.title, season, episodeCount), true)
+    }
+  }, [page, metadataLoading, episodeCount, episode, season, selected.title])
+
   const scheduleDays = Array.from({ length: 7 }, (_, offset) => {
     const date = new Date()
     date.setHours(0, 0, 0, 0)
@@ -1709,7 +1755,7 @@ function App() {
                     <h2>
                       {isFilm(selected.title) ? "Watch the film" : "Episodes"}{" "}
                       <span className="heading-note">
-                        {episodeCount} available in preview
+                        {episodeCount} {episodeCount === 1 ? "episode" : "episodes"} available
                       </span>
                     </h2>
                     {!isFilm(selected.title) && (
@@ -1726,7 +1772,15 @@ function App() {
                       </select>
                     )}
                   </div>
-                  <div className="episode-list">{episodes}</div>
+                  <div className="episode-list">
+                    {episodeCount > 0 ? episodes : (
+                      <div className="empty-state">
+                        <Icon name="calendar" size={28} />
+                        <h2>No aired episodes available yet</h2>
+                        <p>Episodes will appear here once AniList or Kitsu confirms their release.</p>
+                      </div>
+                    )}
+                  </div>
                   <p className="catalog-note">
                     Catalog data ·{" "}
                     {isFilm(selected.title)
