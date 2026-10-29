@@ -1570,7 +1570,7 @@ function App() {
                 <select
                   aria-label="Genre"
                   value={genre}
-                  onChange={(e) => setGenre(e.target.value)}
+                  onChange={(e) => { setGenre(e.target.value); setMoviesPage(1) }}
                 >
                   {["All genres", ...GENRE_OPTIONS].map((g) => (
                     <option key={g}>{g}</option>
@@ -1582,7 +1582,7 @@ function App() {
                 <select
                   aria-label="Year"
                   value={year}
-                  onChange={(e) => setYear(e.target.value)}
+                  onChange={(e) => { setYear(e.target.value); setMoviesPage(1) }}
                 >
                   {["All years", "2025", "2024", "2023", "2022", "2016"].map(
                     (y) => (
@@ -1596,7 +1596,7 @@ function App() {
                 <select
                   aria-label="Release season"
                   value={seasonFilter}
-                  onChange={(e) => setSeasonFilter(e.target.value)}
+                  onChange={(e) => { setSeasonFilter(e.target.value); setMoviesPage(1) }}
                 >
                   {["All seasons", "Winter", "Spring", "Summer", "Fall"].map(
                     (s) => (
@@ -1610,7 +1610,7 @@ function App() {
                 <select
                   aria-label="Sort results"
                   value={sort}
-                  onChange={(e) => setSort(e.target.value)}
+                  onChange={(e) => { setSort(e.target.value); setMoviesPage(1) }}
                 >
                   {[
                     "Popularity",
@@ -1683,7 +1683,7 @@ function App() {
                 <button className="button purple" onClick={() => setMoviesReloadNonce((value) => value + 1)}>Try again</button>
               </div>
             )}
-            {!loading && !filtered.length && !(page === "Movies" && moviesError) && (
+            {!loading && !filtered.length && !(page === "Movies" && (moviesLoading || moviesError)) && (
               <div className="empty-state">
                 <Icon name="search" size={42} />
                 <h2>No stories found. Yet.</h2>
@@ -1695,6 +1695,7 @@ function App() {
                     setGenre("All genres")
                     setYear("All years")
                     setSeasonFilter("All seasons")
+                    setMoviesPage(1)
                   }}
                 >
                   Explore all anime
