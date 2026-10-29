@@ -14,6 +14,12 @@ npm run dev
 
 Vite runs at http://localhost:5173 and proxies `/api` requests to Express on port 3001. Build with `npm run build`; `npm start` serves the built app and API on `PORT` (default 3001).
 
+## SEO-friendly routes
+
+Anime detail pages use `/anime/{anime-title-slug}` and episode pages use `/watch/{anime-title-slug}/season-{season}/episode-{episode}`. Browse navigation uses clean paths such as `/discover`, `/movies`, and `/schedule`; direct links and browser back/forward navigation are supported. The app updates the page title, description, canonical URL, Open Graph/Twitter metadata, and Anime structured data. In production, Express also emits route-specific metadata in the initial HTML and serves `/robots.txt` and `/sitemap.xml`.
+
+Set `PUBLIC_SITE_URL` in the production environment to your real public origin (for example, `https://your-domain.com`, without a trailing slash) so sitemap and canonical URLs use the public domain. For production SEO, deploy the built app with `npm run build` followed by `npm start`; the Vite development server is for development and serves a generic HTML shell before React runs.
+
 ## Data and playback
 
 - **AniList** supplies canonical anime IDs and anime-level metadata through GraphQL.
