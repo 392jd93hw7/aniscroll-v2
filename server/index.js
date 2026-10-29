@@ -130,7 +130,7 @@ app.get("/api/anilist/:id", async (req, res) => {
 
 async function findKitsuAnime(anilistId) {
   const mappingUrl = new URL(KITSU_URL + "/mappings")
-  mappingUrl.searchParams.set("filter[externalSite]", "ANILIST_ANIME")
+  mappingUrl.searchParams.set("filter[externalSite]", "anilist/anime")
   mappingUrl.searchParams.set("filter[externalId]", String(anilistId))
   mappingUrl.searchParams.set("include", "item")
   const mappingPayload = await getJson(mappingUrl.toString())
@@ -198,7 +198,8 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
       const anime = normalizeKitsuAnime(record)
       if (!record || !anime) return { anime: null, episodes: [] }
       const episodesUrl = new URL(KITSU_URL + "/episodes")
-      episodesUrl.searchParams.set("filter[media_id]", String(record.id))
+      episodesUrl.searchParams.set("filter[mediaType]", "Anime")
+      episodesUrl.searchParams.set("filter[mediaId]", String(record.id))
       episodesUrl.searchParams.set("page[limit]", "20")
       episodesUrl.searchParams.set("page[offset]", "0")
       episodesUrl.searchParams.set("sort", "number")
