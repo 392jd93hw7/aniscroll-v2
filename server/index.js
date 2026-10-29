@@ -65,9 +65,21 @@ async function queryAniList(query, variables = {}) {
       body: JSON.stringify({ query, variables }),
       signal: AbortSignal.timeout(12000),
     })
-    if (!response.ok) throw new Error("AniList returned " + response.status)
+    const retryAfterSeconds = Math.max(0, Number(response.headers.get("retry-after") || 0))
+    if (!response.ok) {
+      const error = new Error("AniList returned " + response.status)
+      error.statusCode = response.status
+      error.retryAfterSeconds = retryAfterSeconds
+      throw error
+    }
     const payload = await response.json()
-    if (payload.errors?.length) throw new Error(payload.errors[0].message || "AniList query failed")
+    if (payload.errors?.length) {
+      const firstError = payload.errors[0]
+      const error = new Error(firstError.message || "AniList query failed")
+      error.statusCode = Number(firstError.status || 0)
+      error.retryAfterSeconds = retryAfterSeconds
+      throw error
+    }
     return payload.data
   })
 }
