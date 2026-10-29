@@ -431,3 +431,30 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .tabs button[aria-pressed='true'] .schedule-date-label { color: #c5b4f1; }
 .adult-content-label { position: absolute; z-index: 5; top: 10px; right: 9px; padding: 4px 6px; border: 1px solid #fb718566; border-radius: 4px; background: #881337e8; color: #fff1f2; font-size: 9px; font-weight: 800; letter-spacing: .4px; }
 .schedule-item .adult-content-label { position: static; display: inline-flex; width: max-content; margin-top: 5px; }
+
+/* AniList-powered anime detail tabs */
+.character-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.character-card { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface, #141419); }
+.character-header { display: flex; align-items: flex-start; gap: 14px; color: inherit; text-decoration: none; min-width: 0; }
+.character-header > img { width: 94px; height: 124px; flex: 0 0 94px; border-radius: 6px; object-fit: cover; background: #1c1c24; }
+.character-heading { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+.character-role, .relation-label { color: #bca3ff; font-size: 8px; font-weight: 750; letter-spacing: 1.2px; text-transform: uppercase; }
+.character-heading h3 { color: #f5f2fa; font-size: 15px; line-height: 1.4; }
+.character-facts, .character-voice-actors p { color: var(--muted, #92929e); font-size: 11px; line-height: 1.6; }
+.character-anilist-link { color: #bca3ff; font-size: 10px; margin-top: 4px; }
+.character-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; margin-top: 14px; color: #a9a3b4; font-size: 11px; line-height: 1.8; }
+.character-voice-actors { border-top: 1px solid var(--line); margin-top: 13px; padding-top: 11px; }
+.character-voice-actors > span { display: block; margin-bottom: 4px; color: #d2c4f6; font-size: 9px; font-weight: 650; }
+.anilist-related-sections > section { margin-bottom: 36px; }
+.anilist-related-item { min-width: 0; }
+.anilist-related-item > .relation-label { display: block; min-height: 20px; margin-bottom: 4px; }
+.anilist-related-item .poster-card { height: 100%; }
+.anilist-facts-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 26px 0 22px; }
+.anilist-facts-grid > div { min-width: 0; display: flex; flex-direction: column; gap: 7px; padding: 15px; border: 1px solid var(--line); border-radius: 7px; background: #111114; }
+.anilist-facts-grid span { color: var(--muted, #92929e); font-size: 10px; }
+.anilist-facts-grid strong { color: #f1edf8; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.anilist-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 15px 0; }
+.anilist-tags > span { padding: 6px 9px; border: 1px solid #ffffff17; border-radius: 5px; background: #17151d; color: #bdb3ce; font-size: 10px; }
+.anilist-source-link { display: inline-flex; margin-top: 14px; color: #bca3ff; font-size: 12px; text-decoration: none; }
+@media (max-width: 800px) { .anilist-facts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .character-grid { grid-template-columns: 1fr; } }
+@media (max-width: 480px) { .character-card { padding: 12px; } .character-header > img { width: 78px; height: 104px; flex-basis: 78px; } .character-heading h3 { font-size: 13px; } .anilist-facts-grid { gap: 8px; } .anilist-facts-grid > div { padding: 11px; } }
