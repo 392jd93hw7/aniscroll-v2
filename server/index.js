@@ -260,6 +260,41 @@ app.get("/api/anilist/schedule", async (req, res) => {
     res.status(502).json({ error: "AniList airing schedule is temporarily unavailable" })
   }
 })
+app.get("/api/anilist/movies", async (req, res) => {
+  const page = Number(req.query.page ?? 1)
+  const search = String(req.query.q ?? "").trim() || null
+  if (!Number.isSafeInteger(page) || page < 1 || page > 1000) {
+    return res.status(400).json({ error: "Page must be between 1 and 1000." })
+  }
+  try {
+    const sort = search ? ["SEARCH_MATCH"] : ["POPULARITY_DESC"]
+    const perAdultGroup = 15
+    const query = "query($page: Int!, $perPage: Int!, $search: String, $sort: [MediaSort], $isAdult: Boolean!) { Page(page: $page, perPage: $perPage) { pageInfo { currentPage hasNextPage total } media(type: ANIME, format: MOVIE, search: $search, sort: $sort, isAdult: $isAdult) { " + MEDIA_FIELDS + " } } }"
+    const groups = await Promise.all([false, true].map(async (isAdult) => {
+      const data = await queryAniList(query, { page, perPage: perAdultGroup, search, sort, isAdult })
+      return { results: data.Page.media || [], pageInfo: data.Page.pageInfo || {} }
+    }))
+    const unique = new Map()
+    for (const group of groups) for (const item of group.results) unique.set(Number(item.id), item)
+    let results = Array.from(unique.values())
+    if (search) {
+      const normalize = (value) => String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
+      const needle = normalize(search)
+      results.sort((a, b) => {
+        const exactA = [a.title?.english, a.title?.romaji, a.title?.native].some((title) => normalize(title) === needle)
+        const exactB = [b.title?.english, b.title?.romaji, b.title?.native].some((title) => normalize(title) === needle)
+        return Number(exactB) - Number(exactA)
+      })
+    } else {
+      results.sort((a, b) => Number(b.popularity || 0) - Number(a.popularity || 0))
+    }
+    res.set("Cache-Control", "public, max-age=300")
+    res.json({ results: results.slice(0, 30), pageInfo: { currentPage: page, perPage: 30, hasNextPage: groups.some((group) => group.pageInfo.hasNextPage), total: groups.reduce((sum, group) => sum + Number(group.pageInfo.total || 0), 0) } })
+  } catch (error) {
+    console.error("AniList movie query failed:", error?.message || error)
+    res.status(502).json({ error: "Unable to load anime movies from AniList" })
+  }
+})
 app.get("/api/anilist/trending", async (_req, res) => {
   try {
     const results = await queryAniListMedia({ perPage: 24, sort: ["TRENDING_DESC", "POPULARITY_DESC"] })
