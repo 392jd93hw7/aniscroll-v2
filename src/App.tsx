@@ -408,9 +408,10 @@ function App() {
     const params = new URLSearchParams({ page: String(moviesPage) })
     if (term) params.set("q", term)
     void fetch("/api/anilist/movies?" + params.toString())
-      .then((response) => {
-        if (!response.ok) throw new Error("Movie catalog request failed")
-        return response.json()
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(payload.error || ("Movie catalog request failed (" + response.status + ")"))
+        return payload
       })
       .then((payload) => {
         if (!active) return
@@ -418,7 +419,7 @@ function App() {
         setMoviesHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
       })
       .catch(() => {
-        if (active) { setMovieResults([]); setMoviesHasNextPage(false); setMoviesError("Could not load movies from AniList. Please try again.") }
+        if (active) { setMovieResults([]); setMoviesHasNextPage(false); setMoviesError(error instanceof Error ? error.message : "Could not load movies from AniList. Please try again.") }
       })
       .finally(() => { if (active) setMoviesLoading(false) })
     return () => { active = false }
@@ -1668,7 +1669,7 @@ function App() {
                 {filtered.map(card)}
               </div>
             )}
-            {page === "Movies" && !moviesLoading && (
+            {page === "Movies" && !moviesLoading && !moviesError && (
               <div className="movies-pagination" aria-label="Movie pages">
                 <button className="button glass" disabled={moviesPage <= 1} onClick={() => setMoviesPage((current) => Math.max(1, current - 1))}>Previous</button>
                 <span>Page {moviesPage} <small>· 30 movies per page</small></span>
