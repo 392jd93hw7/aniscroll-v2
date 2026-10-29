@@ -426,7 +426,8 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .episode-item { display: flex; width: 100%; }
 
 /* Live AniList schedule and explicit adult-catalog labels. */
-.schedule-date-label { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; font-weight: 400; }
+.schedule-day-tab { flex-direction: column; gap: 3px; min-width: 66px; padding-inline: 8px; }
+.schedule-date-label { display: block; margin-top: 1px; color: var(--muted); font-size: 9px; font-weight: 400; }
 .tabs button[aria-pressed='true'] .schedule-date-label { color: #c5b4f1; }
 .adult-content-label { position: absolute; z-index: 5; top: 10px; right: 9px; padding: 4px 6px; border: 1px solid #fb718566; border-radius: 4px; background: #881337e8; color: #fff1f2; font-size: 9px; font-weight: 800; letter-spacing: .4px; }
 .schedule-item .adult-content-label { position: static; display: inline-flex; width: max-content; margin-top: 5px; }
