@@ -21,6 +21,14 @@ type Anime = {
   year: number
   genre: string
   label?: string
+  isAdult?: boolean
+}
+type ScheduleRelease = {
+  id: number
+  airingAt: number
+  timeUntilAiring: number
+  episode: number
+  media: any
 }
 const anime: Anime[] = [
   {
@@ -95,6 +103,7 @@ const PAGE_PATHS: Record<string, string> = {
   Admin: "/admin", Auth: "/sign-in",
 }
 const PATH_PAGES: Record<string, string> = Object.fromEntries(Object.entries(PAGE_PATHS).map(([page, path]) => [path, page]))
+const localDateKey = (date: Date) => date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0")
 const animePath = (title: string) => "/anime/" + slugify(title)
 const watchPath = (title: string, season: number, episode: number) => "/watch/" + slugify(title) + "/season-" + season + "/episode-" + episode
 function readStorage<T>(key: string, fallback: T): T {
@@ -274,6 +283,10 @@ function App() {
   const [routePath, setRoutePath] = useState(() => typeof window === "undefined" ? "/" : window.location.pathname)
   const lastAppliedRouteRef = useRef("")
   const resolvedRouteRef = useRef("")
+  const [airingSchedule, setAiringSchedule] = useState<ScheduleRelease[]>([])
+  const [scheduleLoading, setScheduleLoading] = useState(false)
+  const [scheduleError, setScheduleError] = useState("")
+  const [scheduleDate, setScheduleDate] = useState(() => localDateKey(new Date()))
   const notify = (text: string) => {
     setToast(text)
     window.setTimeout(() => setToast(""), 3200)
@@ -288,6 +301,7 @@ function App() {
     score: item.averageScore ? (Number(item.averageScore) / 10).toFixed(1) : "—",
     year: Number(item.seasonYear || item.startDate?.year || new Date().getFullYear()),
     genre: item.genres?.[0] || "Anime",
+    isAdult: Boolean(item.isAdult),
     label: item.trending ? "TRENDING" : undefined,
   })
   const catalog: Anime[] = [
@@ -328,6 +342,30 @@ function App() {
     }, term.length > 1 ? 260 : 50)
     return () => { active = false; window.clearTimeout(timer) }
   }, [query])
+  useEffect(() => {
+    if (page !== "Schedule") return
+    let active = true
+    setScheduleLoading(true)
+    setScheduleError("")
+    const from = Math.floor(Date.now() / 1000)
+    const rangeEnd = new Date()
+    rangeEnd.setDate(rangeEnd.getDate() + 7)
+    rangeEnd.setHours(0, 0, 0, 0)
+    const to = Math.floor(rangeEnd.getTime() / 1000)
+    void fetch("/api/anilist/schedule?from=" + from + "&to=" + to)
+      .then((response) => {
+        if (!response.ok) throw new Error("AniList schedule is unavailable")
+        return response.json()
+      })
+      .then((payload) => {
+        if (active) setAiringSchedule(Array.isArray(payload.results) ? payload.results : [])
+      })
+      .catch(() => {
+        if (active) setScheduleError("Could not load the live AniList airing schedule. Please try again.")
+      })
+      .finally(() => { if (active) setScheduleLoading(false) })
+    return () => { active = false }
+  }, [page])
   useEffect(() => {
     let active = true
     const loadMetadata = async () => {
@@ -654,6 +692,21 @@ function App() {
   const episodeTitles: string[] = kitsuEpisodes.length ? kitsuEpisodes.map((ep) => String(ep.title || ("Episode " + ep.number))) : info.episodes
   const duration = runtimeFor(selected.title)
   const episodeCount = Math.max(1, episodeTitles.length)
+  const scheduleDays = Array.from({ length: 7 }, (_, offset) => {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    date.setDate(date.getDate() + offset)
+    return {
+      key: localDateKey(date),
+      label: offset === 0 ? "Today" : offset === 1 ? "Tomorrow" : date.toLocaleDateString(undefined, { weekday: "long" }),
+      dateLabel: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    }
+  })
+  const selectedScheduleDay = scheduleDays.find((day) => day.key === scheduleDate) || scheduleDays[0]
+  const releasesForSelectedDay = airingSchedule
+    .filter((release) => localDateKey(new Date(release.airingAt * 1000)) === scheduleDate)
+    .sort((a, b) => a.airingAt - b.airingAt)
+
   const embedUrl = aniListId
     ? streamServer === "HD-1"
       ? "https://anixo.buzz/embed/ani/" + aniListId + "/" + episode + "?track=" + audioTrack
@@ -751,6 +804,7 @@ function App() {
             {a.label}
           </span>
         )}
+        {a.isAdult && <span className="adult-content-label">18+</span>}
         <span className="rating">★ {a.score}</span>
         <span className="poster-hover">
           <Icon name="play" size={30} />
@@ -2034,58 +2088,70 @@ function App() {
               timezone.
             </p>
             <div className="tabs">
-              {[
-                "Today",
-                "Tomorrow",
-                "Wednesday",
-                "Thursday",
-                "Friday",
-                "Saturday",
-                "Sunday",
-              ].map((t) => (
+              {scheduleDays.map((day) => (
                 <button
-                  key={t}
-                  className={
-                    tab === t || (tab === "Episodes" && t === "Today")
-                      ? "selected"
-                      : ""
-                  }
-                  onClick={() => setTab(t)}
+                  key={day.key}
+                  className={scheduleDate === day.key ? "selected" : ""}
+                  onClick={() => setScheduleDate(day.key)}
+                  aria-pressed={scheduleDate === day.key}
                 >
-                  {t}
+                  {day.label} <span className="schedule-date-label">{day.dateLabel}</span>
                 </button>
               ))}
             </div>
-            <h2>{tab === "Episodes" ? "Today" : tab}’s releases</h2>
-            <div className="schedule-page">
-              {catalog.slice(0, 5).map((a, i) => (
-                <div className="schedule-item" key={a.title}>
-                  <img src={a.image} alt="" />
-                  <div>
-                    <h3>{a.title}</h3>
-                    <p>
-                      Episode {i + 5} · {16 + i}:30 · SUB
-                    </p>
-                  </div>
-                  <button
-                    className="button glass"
-                    onClick={() => {
-                      setReminders((r) =>
-                        r.includes(a.title)
-                          ? r.filter((x) => x !== a.title)
-                          : [...r, a.title],
-                      )
-                      notify("Reminder preference updated")
-                    }}
-                  >
-                    <Icon
-                      name={reminders.includes(a.title) ? "check" : "bell"}
-                    />
-                    {reminders.includes(a.title) ? "Reminder set" : "Remind me"}
-                  </button>
-                </div>
-              ))}
-            </div>
+            <h2>{selectedScheduleDay.label}’s releases</h2>
+            {scheduleLoading ? (
+              <div className="empty-state">
+                <Icon name="calendar" size={32} />
+                <h2>Loading airing schedule…</h2>
+                <p>Checking AniList for upcoming episodes.</p>
+              </div>
+            ) : scheduleError ? (
+              <div className="empty-state" role="status">
+                <Icon name="info" size={32} />
+                <h2>Schedule unavailable</h2>
+                <p>{scheduleError}</p>
+                <button className="button purple" onClick={() => setPage("Home")}>Back to home</button>
+              </div>
+            ) : releasesForSelectedDay.length ? (
+              <div className="schedule-page">
+                {releasesForSelectedDay.map((release) => {
+                  const a = normalizeAniList(release.media)
+                  const airingTime = new Date(release.airingAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  return (
+                    <div className="schedule-item" key={release.id}>
+                      <img src={a.image} alt={a.title} loading="lazy" />
+                      <div>
+                        <h3>{a.title}</h3>
+                        <p>
+                          Episode {release.episode} · {airingTime} · {a.isAdult ? "18+ adult title" : "AniList airing"}
+                        </p>
+                      </div>
+                      <button
+                        className="button glass"
+                        onClick={() => {
+                          setReminders((items) =>
+                            items.includes(a.title)
+                              ? items.filter((title) => title !== a.title)
+                              : [...items, a.title],
+                          )
+                          notify("Reminder preference updated")
+                        }}
+                      >
+                        <Icon name={reminders.includes(a.title) ? "check" : "bell"} />
+                        {reminders.includes(a.title) ? "Reminder set" : "Remind me"}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <Icon name="calendar" size={32} />
+                <h2>No listed releases</h2>
+                <p>AniList has no upcoming anime episodes listed for {selectedScheduleDay.label.toLowerCase()}.</p>
+              </div>
+            )
           </div>
         )}
         {page === "Profile" && (
