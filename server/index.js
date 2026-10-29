@@ -294,6 +294,89 @@ app.get("/api/anilist/resolve", async (req, res) => {
   }
 })
 
+app.get("/api/anilist/:id/details", async (req, res) => {
+  const id = Number(req.params.id)
+  if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid AniList ID" })
+  try {
+    const query = `query($id: Int!) {
+      Media(id: $id, type: ANIME) {
+        id
+        title { romaji english native }
+        description(asHtml: false)
+        format
+        status
+        source
+        season
+        seasonYear
+        startDate { year month day }
+        episodes
+        duration
+        averageScore
+        meanScore
+        popularity
+        favourites
+        genres
+        tags { name rank isMediaSpoiler isGeneralSpoiler }
+        studios(isMain: true) { nodes { id name siteUrl } }
+        characters(page: 1, perPage: 25, sort: [ROLE]) {
+          edges {
+            role
+            node {
+              id
+              name { full native }
+              image { large }
+              description(asHtml: false)
+              gender
+              age
+              siteUrl
+            }
+          }
+        }
+        relations {
+          edges {
+            relationType
+            node {
+              id
+              type
+              title { romaji english native }
+              coverImage { extraLarge large }
+              bannerImage
+              format
+              status
+              seasonYear
+              averageScore
+              genres
+            }
+          }
+        }
+        recommendations(page: 1, perPage: 12, sort: RATING_DESC) {
+          nodes {
+            rating
+            mediaRecommendation {
+              id
+              type
+              title { romaji english native }
+              coverImage { extraLarge large }
+              bannerImage
+              format
+              status
+              seasonYear
+              averageScore
+              genres
+            }
+          }
+        }
+      }
+    }`
+    const data = await queryAniList(query, { id })
+    if (!data.Media) return res.status(404).json({ error: "Anime was not found on AniList" })
+    res.set("Cache-Control", "public, max-age=900")
+    res.json({ details: data.Media })
+  } catch (error) {
+    console.error("AniList detail enrichment failed:", error?.message || error)
+    res.status(502).json({ error: "Unable to load AniList characters and related media" })
+  }
+})
 app.get("/api/anilist/:id", async (req, res) => {
   const id = Number(req.params.id)
   if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: "Invalid AniList ID" })
