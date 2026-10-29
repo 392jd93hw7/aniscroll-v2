@@ -65,7 +65,9 @@ async function queryAniList(query, variables = {}) {
       body: JSON.stringify({ query, variables }),
       signal: AbortSignal.timeout(12000),
     })
-    const retryAfterSeconds = Math.max(0, Number(response.headers.get("retry-after") || 0))
+    const retryAfterHeader = Number(response.headers.get("retry-after") || 0)
+    const resetAt = Number(response.headers.get("x-ratelimit-reset") || 0)
+    const retryAfterSeconds = Math.max(0, retryAfterHeader || (resetAt > Date.now() / 1000 ? Math.ceil(resetAt - Date.now() / 1000) : 0))
     if (!response.ok) {
       const error = new Error("AniList returned " + response.status)
       error.statusCode = response.status
@@ -284,23 +286,43 @@ app.get("/api/anilist/movies", async (req, res) => {
     const fallbackQuery = "query($page: Int!, $perPage: Int!, $search: String, $sort: [MediaSort], $isAdult: Boolean!) { Page(page: $page, perPage: $perPage) { pageInfo { currentPage hasNextPage total } media(type: ANIME, format: MOVIE, search: $search, sort: $sort, isAdult: $isAdult) { id idMal isAdult title { romaji english native } description(asHtml: false) coverImage { extraLarge large } bannerImage genres tags { name } season seasonYear startDate { year } averageScore popularity status episodes format } } }"
     const groups = []
     const errors = []
-    // Query each audience category independently so one upstream failure cannot blank the whole page.
+    let retryAfterSeconds = 0
+    // Query sequentially: AniList is currently applying burst and request-rate limits.
     for (const isAdult of [false, true]) {
       const variables = { page, perPage: 30, search, sort, isAdult }
       try {
         const data = await queryAniList(fullQuery, variables)
         groups.push({ results: data.Page.media || [], pageInfo: data.Page.pageInfo || {} })
       } catch (fullError) {
+        const fullStatus = Number(fullError?.statusCode || 0)
+        if (fullStatus === 429 || fullStatus === 403) {
+          errors.push(fullError)
+          retryAfterSeconds = Number(fullError?.retryAfterSeconds || 0)
+          console.error("AniList movie query stopped for isAdult=" + isAdult + ":", fullError?.message)
+          break
+        }
         try {
           const data = await queryAniList(fallbackQuery, variables)
           groups.push({ results: data.Page.media || [], pageInfo: data.Page.pageInfo || {} })
         } catch (fallbackError) {
-          errors.push(String(fallbackError?.message || fullError?.message || "AniList request failed"))
+          errors.push(fallbackError)
+          const fallbackStatus = Number(fallbackError?.statusCode || 0)
+          retryAfterSeconds = Number(fallbackError?.retryAfterSeconds || retryAfterSeconds)
           console.error("AniList movie query failed for isAdult=" + isAdult + ":", fallbackError?.message || fullError?.message)
+          if (fallbackStatus === 429 || fallbackStatus === 403) break
         }
       }
     }
     if (!groups.length) {
+      const rateLimited = errors.some((error) => Number(error?.statusCode) === 429)
+      if (rateLimited) {
+        const retrySeconds = retryAfterSeconds || 60
+        res.set("Retry-After", String(retrySeconds))
+        return res.status(503).json({ error: "AniList is rate-limiting requests. Please wait " + retrySeconds + " seconds, then try again.", retryAfterSeconds: retrySeconds })
+      }
+      if (errors.some((error) => Number(error?.statusCode) === 403)) {
+        return res.status(503).json({ error: "AniList is temporarily unavailable. Please try again later." })
+      }
       return res.status(502).json({ error: "AniList movie catalog is temporarily unavailable. Please retry shortly." })
     }
     const unique = new Map()
