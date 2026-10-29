@@ -20,6 +20,10 @@ Anime detail pages use `/anime/{anime-title-slug}` and episode pages use `/watch
 
 Set `PUBLIC_SITE_URL` in the production environment to your real public origin (for example, `https://your-domain.com`, without a trailing slash) so sitemap and canonical URLs use the public domain. For production SEO, deploy the built app with `npm run build` followed by `npm start`; the Vite development server is for development and serves a generic HTML shell before React runs.
 
+## Movies catalog
+
+The Movies page uses a dedicated AniList query filtered to `format: MOVIE`, returning up to 30 movie titles per page with Previous/Next pagination. Adult and non-adult titles are fetched separately and merged, and the search box queries the movie catalog rather than the general anime list.
+
 ## Schedule and adult catalog
 
 The Schedule page calls AniList's `Page.airingSchedules` query for the next seven local calendar days, paginates releases, and renders each airing date and time in the visitor's local timezone. The homepage's “Coming up next” section uses the same live data. Empty dates are shown as empty rather than reusing placeholder titles or times.
