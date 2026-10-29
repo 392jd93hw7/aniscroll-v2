@@ -355,7 +355,7 @@ app.get("/api/anilist/:id/details", async (req, res) => {
             }
           }
         }
-        recommendations(page: 1, perPage: 12, sort: RATING_DESC) {
+        recommendations(page: 1, perPage: 12, sort: [RATING_DESC]) {
           nodes {
             rating
             mediaRecommendation {
