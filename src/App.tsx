@@ -254,7 +254,9 @@ function App() {
     [audioTrack, setAudioTrack] = useState<"sub" | "dub">("sub"),
     [embedError, setEmbedError] = useState(false),
     [metadataLoading, setMetadataLoading] = useState(false),
-    [sessionUserId, setSessionUserId] = useState<string | null>(null)
+    [sessionUserId, setSessionUserId] = useState<string | null>(null),
+    [isAdmin, setIsAdmin] = useState(false),
+    [adminOverrides, setAdminOverrides] = useState<any[]>([])
   const notify = (text: string) => {
     setToast(text)
     window.setTimeout(() => setToast(""), 3200)
@@ -275,6 +277,18 @@ function App() {
     ...remoteAnime,
     ...anime.filter((fallback) => !remoteAnime.some((item) => item.title.toLowerCase() === fallback.title.toLowerCase())),
   ]
+    .filter((item) => !adminOverrides.some((override) => Number(override.anilist_id) === Number(item.id) && override.hidden))
+    .map((item) => {
+      const override = adminOverrides.find((row) => Number(row.anilist_id) === Number(item.id))
+      return {
+        ...item,
+        title: override?.title_override || item.title,
+        image: override?.cover_url || item.image,
+        banner: override?.banner_url || item.banner,
+        synopsis: override?.synopsis_override || item.synopsis,
+        label: override?.featured ? "FEATURED" : item.label,
+      }
+    })
   useEffect(() => {
     try {
       localStorage.setItem("aniscroll:saved", JSON.stringify(saved))
@@ -350,6 +364,35 @@ function App() {
     return () => { active = false; subscription.unsubscribe() }
   }, [])
   useEffect(() => {
+    if (!hasSupabaseConfig || !supabase) {
+      setIsAdmin(false)
+      setAdminOverrides([])
+      return
+    }
+    let active = true
+    const loadAdminData = async () => {
+      try {
+        const { data: overrides } = await supabase
+          .from("anime_overrides")
+          .select("*")
+          .order("updated_at", { ascending: false })
+        if (active && overrides) setAdminOverrides(overrides)
+        if (sessionUserId) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", sessionUserId)
+            .maybeSingle()
+          if (active) setIsAdmin(profile?.role === "admin")
+        } else if (active) setIsAdmin(false)
+      } catch {
+        if (active) setIsAdmin(false)
+      }
+    }
+    void loadAdminData()
+    return () => { active = false }
+  }, [sessionUserId])
+  useEffect(() => {
     const openSharedTitle = () => {
       try {
         const title = decodeURIComponent(window.location.hash.slice(1))
@@ -409,6 +452,36 @@ function App() {
     setSaved((s) => removing ? s.filter((t) => t !== a.title) : [...s, a.title])
     void persistWatchlist(a, (statuses[a.title] || nextStatus) as LibraryStatus, removing)
     notify(removing ? "Removed from your watchlist" : "Added to your watchlist")
+  }
+  const saveAdminRecord = async (record: any) => {
+    if (!isAdmin || !supabase) {
+      notify("Admin access is required.")
+      return false
+    }
+    const { data, error } = await supabase
+      .from("anime_overrides")
+      .upsert({ ...record, updated_at: new Date().toISOString() }, { onConflict: "anilist_id" })
+      .select()
+      .single()
+    if (error) {
+      notify(error.message)
+      return false
+    }
+    setAdminOverrides((items) => [...items.filter((item) => Number(item.anilist_id) !== Number(data.anilist_id)), data])
+    return true
+  }
+  const removeAdminRecord = async (anilistId: number) => {
+    if (!isAdmin || !supabase) {
+      notify("Admin access is required.")
+      return
+    }
+    const { error } = await supabase.from("anime_overrides").delete().eq("anilist_id", anilistId)
+    if (error) {
+      notify(error.message)
+      return
+    }
+    setAdminOverrides((items) => items.filter((item) => Number(item.anilist_id) !== anilistId))
+    notify("Catalog override removed")
   }
   useEffect(() => {
     if (page !== "Player" || !playing) return
@@ -2018,9 +2091,82 @@ function App() {
                 Save preferences
               </button>
             </form>
+            {isAdmin && (
+              <button className="button purple admin-open-button" onClick={() => go("Admin")}>
+                Open admin dashboard <Icon name="chevron" size={16} />
+              </button>
+            )}
             <button className="text-link" onClick={() => go("Auth")}>
               Sign in to your account <Icon name="chevron" size={16} />
             </button>
+          </div>
+        )}
+        {page === "Admin" && (
+          <div className="page-container admin-page">
+            <span className="eyebrow">ANISCROLL CONTROL ROOM</span>
+            <h1>Catalog dashboard</h1>
+            <p className="muted">Manage metadata overrides for AniList titles. Source IDs and stream-provider mappings remain unchanged.</p>
+            {!isAdmin ? (
+              <div className="session-notice">
+                <Icon name="info" size={18} />
+                <span>Admin access is not enabled. A project owner must promote your profile role to admin in Supabase.</span>
+                <button className="text-link" onClick={() => go("Profile")}>Back to profile</button>
+              </div>
+            ) : (
+              <>
+                <div className="admin-summary-grid">
+                  <div className="admin-summary-card"><span>Catalog entries</span><strong>{catalog.length}</strong></div>
+                  <div className="admin-summary-card"><span>Metadata overrides</span><strong>{adminOverrides.length}</strong></div>
+                  <div className="admin-summary-card"><span>Featured overrides</span><strong>{adminOverrides.filter((item) => item.featured && !item.hidden).length}</strong></div>
+                </div>
+                <form className="admin-form" onSubmit={async (e) => {
+                  e.preventDefault()
+                  const form = e.currentTarget
+                  const values = new FormData(form)
+                  const anilistId = Number(values.get("anilist_id"))
+                  if (!Number.isSafeInteger(anilistId) || anilistId <= 0) {
+                    notify("Enter a valid AniList ID.")
+                    return
+                  }
+                  const savedRecord = await saveAdminRecord({
+                    anilist_id: anilistId,
+                    title_override: String(values.get("title_override") || "").trim() || null,
+                    cover_url: String(values.get("cover_url") || "").trim() || null,
+                    banner_url: String(values.get("banner_url") || "").trim() || null,
+                    synopsis_override: String(values.get("synopsis_override") || "").trim() || null,
+                    featured: values.get("featured") === "on",
+                    hidden: values.get("hidden") === "on",
+                  })
+                  if (savedRecord) {
+                    form.reset()
+                    notify("Catalog override saved")
+                  }
+                }}>
+                  <div className="admin-form-heading">
+                    <div><h2>Add or update an anime</h2><p className="muted">Reuse the AniList ID to update an existing record.</p></div>
+                  </div>
+                  <label>AniList ID <input type="number" name="anilist_id" min="1" step="1" placeholder="e.g. 21" required /></label>
+                  <label>Title override <input name="title_override" maxLength={160} placeholder="Leave blank to use AniList title" /></label>
+                  <label>Cover image URL <input name="cover_url" type="url" placeholder="Optional poster URL" /></label>
+                  <label>Banner image URL <input name="banner_url" type="url" placeholder="Optional wide banner URL" /></label>
+                  <label>Synopsis override <textarea name="synopsis_override" rows={3} maxLength={6000} placeholder="Leave blank to use AniList synopsis" /></label>
+                  <div className="admin-checks">
+                    <label className="check-label"><input type="checkbox" name="featured" /> Mark as featured</label>
+                    <label className="check-label"><input type="checkbox" name="hidden" /> Hide from browse pages</label>
+                  </div>
+                  <button className="button purple" type="submit">Save catalog override</button>
+                </form>
+                <section className="admin-records">
+                  <div className="admin-form-heading"><h2>Existing overrides</h2><span>{adminOverrides.length} records</span></div>
+                  {adminOverrides.length ? adminOverrides.map((record) => (
+                    <div className="admin-record" key={record.anilist_id}>
+                      <div><strong>{record.title_override || ("AniList #" + record.anilist_id)}</strong><span>ID {record.anilist_id} · {record.hidden ? "Hidden" : record.featured ? "Featured" : "Visible"}</span></div>
+                      <button className="text-link" onClick={() => void removeAdminRecord(Number(record.anilist_id))}>Delete</button>
+                    </div>
+                  )) : <p className="muted">No overrides yet. Default AniList metadata remains in use.</p>}
+                </section>
+              </>
+            )}
           </div>
         )}
         {page === "Auth" && (
