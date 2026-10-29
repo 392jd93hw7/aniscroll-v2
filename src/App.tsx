@@ -343,7 +343,7 @@ function App() {
     return () => { active = false; window.clearTimeout(timer) }
   }, [query])
   useEffect(() => {
-    if (page !== "Schedule") return
+    if (page !== "Schedule" && page !== "Home") return
     let active = true
     setScheduleLoading(true)
     setScheduleError("")
@@ -1350,34 +1350,40 @@ function App() {
                   go("Schedule"),
                 )}
                 <div className="schedule-list">
-                  {catalog.slice(0, 3).map((a, i) => (
-                    <div className="schedule-item" key={a.title}>
-                      <img src={a.image} alt="" />
-                      <div>
-                        <h3>{a.title}</h3>
-                        <p>
-                          Episode {i + 8} <span>•</span> Today,{" "}
-                          {["18:30", "20:00", "21:30"][i]}
-                        </p>
+                  {airingSchedule.slice(0, 3).map((release) => {
+                    const a = normalizeAniList(release.media)
+                    const date = new Date(release.airingAt * 1000)
+                    const dayLabel = localDateKey(date) === localDateKey(new Date())
+                      ? "Today"
+                      : date.toLocaleDateString(undefined, { weekday: "short" })
+                    const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    return (
+                      <div className="schedule-item" key={release.id}>
+                        <img src={a.image} alt={a.title} loading="lazy" />
+                        <div>
+                          <h3>{a.title}</h3>
+                          <p>Episode {release.episode} <span>•</span> {dayLabel}, {time}{a.isAdult ? " · 18+" : ""}</p>
+                        </div>
+                        <button
+                          className={reminders.includes(a.title) ? "active" : ""}
+                          aria-label={"Remind me about " + a.title}
+                          onClick={() => {
+                            setReminders((items) =>
+                              items.includes(a.title)
+                                ? items.filter((title) => title !== a.title)
+                                : [...items, a.title],
+                            )
+                            notify("Reminder preference updated")
+                          }}
+                        >
+                          <Icon name={reminders.includes(a.title) ? "check" : "bell"} />
+                        </button>
                       </div>
-                      <button
-                        className={reminders.includes(a.title) ? "active" : ""}
-                        aria-label={`Remind me about ${a.title}`}
-                        onClick={() => {
-                          setReminders((r) =>
-                            r.includes(a.title)
-                              ? r.filter((t) => t !== a.title)
-                              : [...r, a.title],
-                          )
-                          notify("Reminder preference updated")
-                        }}
-                      >
-                        <Icon
-                          name={reminders.includes(a.title) ? "check" : "bell"}
-                        />
-                      </button>
-                    </div>
-                  ))}
+                    )
+                  })}
+                  {!airingSchedule.length && (
+                    <p className="muted">{scheduleLoading ? "Loading upcoming releases from AniList…" : "No upcoming AniList releases are available right now."}</p>
+                  )}
                 </div>
               </section>
             </div>
@@ -2091,7 +2097,7 @@ function App() {
               {scheduleDays.map((day) => (
                 <button
                   key={day.key}
-                  className={scheduleDate === day.key ? "selected" : ""}
+                  className={"schedule-day-tab " + (scheduleDate === day.key ? "selected" : "")}
                   onClick={() => setScheduleDate(day.key)}
                   aria-pressed={scheduleDate === day.key}
                 >
