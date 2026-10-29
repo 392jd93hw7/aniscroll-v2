@@ -687,28 +687,42 @@ function App() {
     : info.episodes
   const anilistStatus = String(aniListMeta?.status || "")
   const nextAiringEpisodeNumber = Number(aniListMeta?.nextAiringEpisode?.episode || 0)
+  const nextAiringAt = Number(aniListMeta?.nextAiringEpisode?.airingAt || 0)
+  const hasFutureAniListAiring = nextAiringEpisodeNumber > 0 && nextAiringAt * 1000 > Date.now()
   const announcedEpisodeCount = Number(aniListMeta?.episodes || 0)
   const datedKitsuEpisodes = kitsuEpisodes.filter((ep) =>
     ep.airdate && Number.isFinite(Date.parse(String(ep.airdate))),
   )
+  const isKitsuEpisodeAired = (ep: any) => {
+    const airdate = String(ep.airdate || "").trim()
+    if (!airdate) return false
+    // Kitsu often publishes a date without a time. Treat today as not yet confirmed aired.
+    if (/^\d{4}-\d{2}-\d{2}$/.test(airdate)) return airdate < localDateKey(new Date())
+    const timestamp = Date.parse(airdate)
+    return Number.isFinite(timestamp) && timestamp <= Date.now()
+  }
   const airedKitsuEpisodeLimit = datedKitsuEpisodes
-    .filter((ep) => Date.parse(String(ep.airdate)) <= Date.now())
+    .filter(isKitsuEpisodeAired)
     .reduce((max, ep) => Math.max(max, Number(ep.number) || 0), 0)
+  const hasUnreleasedDatedKitsuEpisode = datedKitsuEpisodes.some((ep) => !isKitsuEpisodeAired(ep))
   let availableEpisodeLimit = rawEpisodeTitles.length
   if (isFilm(selected.title)) {
     availableEpisodeLimit = 1
-  } else if (anilistStatus === "FINISHED") {
-    availableEpisodeLimit = announcedEpisodeCount || rawEpisodeTitles.length
+  } else if (hasFutureAniListAiring) {
+    // AniList tells us the next episode that has not aired; only earlier episodes are available.
+    availableEpisodeLimit = Math.max(0, nextAiringEpisodeNumber - 1)
+  } else if (hasUnreleasedDatedKitsuEpisode) {
+    // A dated Kitsu episode today or in the future is not counted as available, even when AniList status is stale.
+    availableEpisodeLimit = airedKitsuEpisodeLimit
   } else if (anilistStatus === "NOT_YET_RELEASED") {
     availableEpisodeLimit = 0
-  } else if (nextAiringEpisodeNumber > 0) {
-    // AniList's next airing episode is the next unreleased episode.
-    availableEpisodeLimit = Math.max(0, nextAiringEpisodeNumber - 1)
+  } else if (anilistStatus === "FINISHED") {
+    availableEpisodeLimit = announcedEpisodeCount || airedKitsuEpisodeLimit || rawEpisodeTitles.length
+  } else if (anilistStatus === "RELEASING" && datedKitsuEpisodes.length) {
+    availableEpisodeLimit = airedKitsuEpisodeLimit
   } else if (anilistStatus === "RELEASING") {
-    // If AniList has no next airing record, trust dated Kitsu releases. Never expose the full announced count.
-    availableEpisodeLimit = datedKitsuEpisodes.length
-      ? airedKitsuEpisodeLimit
-      : Math.max(1, Math.min(rawEpisodeTitles.length, Number(history[selected.title]?.episode || 1)))
+    // With no reliable schedule dates, do not expose the full announced count.
+    availableEpisodeLimit = Math.max(1, Math.min(rawEpisodeTitles.length, Number(history[selected.title]?.episode || 1)))
   }
   const episodeTitles = rawEpisodeTitles.slice(0, Math.max(0, Math.min(rawEpisodeTitles.length, availableEpisodeLimit)))
   const duration = runtimeFor(selected.title)
