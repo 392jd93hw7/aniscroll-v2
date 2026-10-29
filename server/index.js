@@ -89,6 +89,7 @@ const MEDIA_FIELDS = `
   trending
   status
   episodes
+  nextAiringEpisode { airingAt timeUntilAiring episode }
   format
   studios(isMain: true) { nodes { name } }
 `
