@@ -31,3 +31,16 @@ Watchlists, viewing progress, and preferences persist in browser storage. For re
 ## Operational notes
 
 External APIs and providers can be unavailable or impose rate limits. This app does not host or proxy video; embed only content you are authorized to distribute. Verify image rights, provider terms, privacy requirements, and security settings before public production.
+
+
+## Admin dashboard
+
+Configure Supabase and apply `supabase/schema.sql`. After the first user registers, promote the intended account using the Supabase SQL editor:
+
+```sql
+update public.profiles
+set role = 'admin'
+where id = '<auth-user-uuid>';
+```
+
+The Profile page then exposes the role-protected Catalog Dashboard, where admins can override a title, cover URL, banner URL, synopsis, featured state, and browse visibility by AniList ID. Row-level security protects override writes and prevents users from changing their own role. Keep admin promotion limited to trusted project owners.
