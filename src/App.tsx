@@ -410,29 +410,91 @@ function App() {
     return () => { active = false }
   }, [sessionUserId])
   useEffect(() => {
-    const openSharedTitle = () => {
-      try {
-        const title = decodeURIComponent(window.location.hash.slice(1))
-        const match = catalog.find((a) => a.title === title)
-        if (match) {
-          setSelected(match)
-          setSeason(1)
-          setTab("Episodes")
-          setPage("Details")
-        }
-      } catch {
-        /* Ignore malformed external share links. */
+    const handlePopState = () => setRoutePath(window.location.pathname)
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
+  useEffect(() => {
+    const path = routePath.replace(/\/+$/, "") || "/"
+    const staticPage = PATH_PAGES[path]
+    if (staticPage) {
+      if (lastAppliedRouteRef.current !== path) {
+        lastAppliedRouteRef.current = path
+        setPage(staticPage)
+        if (staticPage === "Schedule") setTab("Today")
+        if (staticPage === "Watchlist") setTab("Watchlist")
+      }
+      return
+    }
+    const watchMatch = path.match(/^\/watch\/([^/]+)\/season-(\d+)\/episode-(\d+)$/)
+    const detailMatch = path.match(/^\/anime\/([^/]+)$/)
+    if (!watchMatch && !detailMatch) {
+      if (lastAppliedRouteRef.current !== path) {
+        lastAppliedRouteRef.current = path
+        setPage("Home")
+      }
+      return
+    }
+    const slug = (watchMatch ? watchMatch[1] : detailMatch?.[1]) || ""
+    const applyAnimeRoute = (item: Anime) => {
+      if (lastAppliedRouteRef.current === path) return
+      lastAppliedRouteRef.current = path
+      setSelected(item)
+      setReadMore(false)
+      setTab("Episodes")
+      if (watchMatch) {
+        const nextSeason = Number(watchMatch[2])
+        const nextEpisode = Number(watchMatch[3])
+        if (selected.title !== item.title || season !== nextSeason || episode !== nextEpisode) setProgress(0)
+        setSeason(nextSeason)
+        setEpisode(nextEpisode)
+        setPlaying(false)
+        setPage("Player")
+      } else {
+        setSeason(1)
+        setPage("Details")
       }
     }
-    openSharedTitle()
-    window.addEventListener("hashchange", openSharedTitle)
-    return () => window.removeEventListener("hashchange", openSharedTitle)
-  }, [])
-  const go = (p: string) => {
+    const match = catalog.find((item) => slugify(item.title) === slug)
+    if (match) {
+      applyAnimeRoute(match)
+      return
+    }
+    if (resolvedRouteRef.current === path) return
+    resolvedRouteRef.current = path
+    let active = true
+    const searchTitle = slug.split("-").filter(Boolean).join(" ")
+    void fetch("/api/anilist/resolve?title=" + encodeURIComponent(searchTitle))
+      .then((response) => {
+        if (!response.ok) throw new Error("Anime route could not be resolved")
+        return response.json()
+      })
+      .then((payload) => {
+        const item = payload?.anime ? normalizeAniList(payload.anime) : null
+        if (!active || !item?.id) return
+        setRemoteAnime((items) => [item, ...items.filter((existing) => Number(existing.id) !== Number(item.id))])
+        applyAnimeRoute(item)
+      })
+      .catch(() => {
+        if (active && lastAppliedRouteRef.current !== path) setPage("Home")
+      })
+    return () => { active = false }
+  }, [routePath, remoteAnime, adminOverrides])
+  const writePath = (path: string, replace = false) => {
+    if (window.location.pathname !== path) {
+      if (replace) window.history.replaceState({ path }, "", path)
+      else window.history.pushState({ path }, "", path)
+    }
+    lastAppliedRouteRef.current = path
+    setRoutePath(path)
+  }
+  const go = (p: string, explicitPath?: string) => {
     setPage(p)
     setMenu("")
     if (p === "Schedule") setTab("Today")
     if (p === "Watchlist") setTab("Watchlist")
+    const nextPath = explicitPath || PAGE_PATHS[p]
+    if (nextPath) writePath(nextPath)
     window.scrollTo({ top: 0, behavior: "instant" })
     requestAnimationFrame(() =>
       document.getElementById("main-content")?.focus({ preventScroll: true }),
@@ -444,7 +506,7 @@ function App() {
     setSeason(1)
     setReadMore(false)
     setTab("Episodes")
-    go("Details")
+    go("Details", animePath(a.title))
   }
   const persistWatchlist = async (a: Anime, status: LibraryStatus, remove = false) => {
     if (!hasSupabaseConfig || !supabase || !sessionUserId) return
