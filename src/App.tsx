@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { ReactNode } from "react"
 import {
   storyFor,
@@ -83,6 +83,20 @@ const anime: Anime[] = [
   },
 ]
 const featured = anime[6]
+const slugify = (value: string) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+const PAGE_PATHS: Record<string, string> = {
+  Home: "/", Discover: "/discover", Anime: "/anime", Movies: "/movies",
+  Schedule: "/schedule", Watchlist: "/watchlist", Profile: "/profile",
+  Admin: "/admin", Auth: "/sign-in",
+}
+const PATH_PAGES: Record<string, string> = Object.fromEntries(Object.entries(PAGE_PATHS).map(([page, path]) => [path, page]))
+const animePath = (title: string) => "/anime/" + slugify(title)
+const watchPath = (title: string, season: number, episode: number) => "/watch/" + slugify(title) + "/season-" + season + "/episode-" + episode
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback
   try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback }
@@ -257,6 +271,9 @@ function App() {
     [sessionUserId, setSessionUserId] = useState<string | null>(null),
     [isAdmin, setIsAdmin] = useState(false),
     [adminOverrides, setAdminOverrides] = useState<any[]>([])
+  const [routePath, setRoutePath] = useState(() => typeof window === "undefined" ? "/" : window.location.pathname)
+  const lastAppliedRouteRef = useRef("")
+  const resolvedRouteRef = useRef("")
   const notify = (text: string) => {
     setToast(text)
     window.setTimeout(() => setToast(""), 3200)
