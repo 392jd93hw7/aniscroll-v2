@@ -620,15 +620,6 @@ function App() {
     }
   }, [page, selected.title, episode, season, progress])
   useEffect(() => {
-    if (page !== "Player" || progress < 100) return
-    if (autoplay && episode < episodeCount) {
-      const next = episode + 1
-      setEpisode(next)
-      setProgress(0)
-      writePath(watchPath(selected.title, season, next))
-    } else setPlaying(false)
-  }, [progress, autoplay, episode, page, selected.title, season, episodeCount])
-  useEffect(() => {
     if (!playing || playerSettings || !controlsVisible) return
     const id = window.setTimeout(() => setControlsVisible(false), 3500)
     return () => window.clearTimeout(id)
@@ -722,6 +713,16 @@ function App() {
   const episodeTitles = rawEpisodeTitles.slice(0, Math.max(0, Math.min(rawEpisodeTitles.length, availableEpisodeLimit)))
   const duration = runtimeFor(selected.title)
   const episodeCount = episodeTitles.length
+  useEffect(() => {
+    if (page !== "Player" || progress < 100) return
+    if (autoplay && episode < episodeCount) {
+      const next = episode + 1
+      setEpisode(next)
+      setProgress(0)
+      writePath(watchPath(selected.title, season, next))
+    } else setPlaying(false)
+  }, [progress, autoplay, episode, page, selected.title, season, episodeCount])
+
   useEffect(() => {
     if (page !== "Player" || metadataLoading) return
     if (episodeCount === 0) {
