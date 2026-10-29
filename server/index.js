@@ -7,9 +7,26 @@ const app = express()
 app.disable("x-powered-by")
 app.use(express.json({ limit: "16kb" }))
 
-const PORT = Number(process.env.PORT || 3001)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const DIST = path.resolve(__dirname, "../dist")
+
+// Load optional local .env values without overriding variables supplied by the host.
+try {
+  const envText = await readFile(path.resolve(__dirname, "../.env"), "utf8")
+  for (const line of envText.split(/\r?\n/)) {
+    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*?)\s*$/)
+    if (!match || process.env[match[1]] !== undefined) continue
+    let value = match[2]
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1)
+    }
+    process.env[match[1]] = value
+  }
+} catch {
+  // Production environments may inject variables directly instead.
+}
+
+const PORT = Number(process.env.PORT || 3001)
 const ANILIST_URL = "https://graphql.anilist.co"
 const KITSU_URL = "https://kitsu.io/api/edge"
 const cache = new Map()
