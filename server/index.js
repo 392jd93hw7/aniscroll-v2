@@ -321,6 +321,12 @@ app.get("/api/anilist/:id/details", async (req, res) => {
         characters(page: 1, perPage: 25, sort: [ROLE]) {
           edges {
             role
+            voiceActors(language: JAPANESE) {
+              id
+              name { full }
+              image { large }
+              siteUrl
+            }
             node {
               id
               name { full native }
@@ -329,12 +335,6 @@ app.get("/api/anilist/:id/details", async (req, res) => {
               gender
               age
               siteUrl
-              voiceActors(language: JAPANESE) {
-                id
-                name { full }
-                image { large }
-                siteUrl
-              }
             }
           }
         }
