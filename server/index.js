@@ -165,10 +165,6 @@ app.get("/robots.txt", (req, res) => {
   res.type("text/plain").send([
     "User-agent: *",
     "Allow: /",
-    "Disallow: /profile",
-    "Disallow: /watchlist",
-    "Disallow: /admin",
-    "Disallow: /sign-in",
     "Sitemap: " + origin + "/sitemap.xml",
     "",
   ].join("\n"))
@@ -187,8 +183,7 @@ app.get("/sitemap.xml", async (req, res) => {
   } catch {
     // Keep a usable sitemap containing the main public browse routes.
   }
-  const today = new Date().toISOString().slice(0, 10)
-  const urls = Array.from(paths).map((route) => "<url><loc>" + escapeHtml(origin + route) + "</loc><lastmod>" + today + "</lastmod></url>")
+  const urls = Array.from(paths).map((route) => "<url><loc>" + escapeHtml(origin + route) + "</loc></url>")
   res.set("Cache-Control", "public, max-age=900")
   res.type("application/xml").send('<?xml version="1.0" encoding="UTF-8"?>' + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + urls.join("") + "</urlset>")
 })
@@ -341,6 +336,33 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
     res.json(result)
   } catch {
     res.json({ anime: null, episodes: [], warning: "Kitsu metadata is temporarily unavailable" })
+  }
+})
+
+app.get(["/profile", "/watchlist", "/admin", "/sign-in"], async (req, res, next) => {
+  try {
+    const html = await readFile(path.join(DIST, "index.html"), "utf8")
+    const origin = publicOrigin(req)
+    const pageName = req.path === "/sign-in" ? "Sign in" : req.path.slice(1)
+    const title = pageName.charAt(0).toUpperCase() + pageName.slice(1) + " | Aniscroll"
+    const seoBlock = [
+      "<!-- SEO_DYNAMIC_START -->",
+      "<title>" + escapeHtml(title) + "</title>",
+      '<meta name="description" content="Aniscroll account and personal library page." />',
+      '<meta name="robots" content="noindex,follow" />',
+      '<link rel="canonical" href="' + escapeHtml(origin + req.path) + '" />',
+      '<meta property="og:type" content="website" />',
+      '<meta property="og:title" content="' + escapeHtml(title) + '" />',
+      '<meta property="og:description" content="Aniscroll account and personal library page." />',
+      '<meta property="og:url" content="' + escapeHtml(origin + req.path) + '" />',
+      '<meta name="twitter:card" content="summary" />',
+      "<!-- SEO_DYNAMIC_END -->",
+    ].join("\n")
+    const marker = /<!-- SEO_DYNAMIC_START -->[\s\S]*?<!-- SEO_DYNAMIC_END -->/
+    if (!marker.test(html)) return next()
+    return res.type("html").send(html.replace(marker, seoBlock))
+  } catch {
+    return next()
   }
 })
 
