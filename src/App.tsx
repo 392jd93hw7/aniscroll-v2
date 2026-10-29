@@ -20,6 +20,8 @@ type Anime = {
   score: string
   year: number
   genre: string
+  genres?: string[]
+  tags?: string[]
   label?: string
   isAdult?: boolean
 }
@@ -106,6 +108,50 @@ const PATH_PAGES: Record<string, string> = Object.fromEntries(Object.entries(PAG
 const localDateKey = (date: Date) => date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0")
 const animePath = (title: string) => "/anime/" + slugify(title)
 const watchPath = (title: string, season: number, episode: number) => "/watch/" + slugify(title) + "/season-" + season + "/episode-" + episode
+const GENRE_OPTIONS = [
+  "Action",
+  "Adventure",
+  "Comedy",
+  "Drama",
+  "Fantasy",
+  "Horror",
+  "Mystery",
+  "Romance",
+  "Sci-Fi",
+  "Slice of Life",
+  "Sports",
+  "Supernatural",
+  "Suspense",
+  "Avant Garde",
+  "Award Winning",
+  "Gourmet",
+  "Ecchi",
+  "Hentai",
+  "Mahou Shoujo",
+  "Mecha",
+  "Music",
+  "Psychological",
+  "Thriller",
+  "Isekai",
+  "Reincarnation",
+  "Time Travel",
+  "Martial Arts",
+  "Demons",
+  "Magic",
+  "Vampire",
+  "Historical",
+  "Military",
+  "School",
+  "Seinen",
+  "Shoujo",
+  "Shounen",
+  "Josei",
+  "Parody",
+  "Survival",
+  "Detective",
+]
+const FEATURED_GENRES = ["Action", "Adventure", "Fantasy", "Romance", "Comedy", "Sci-Fi", "Mystery", "Horror", "Isekai", "Supernatural"]
+
 function readStorage<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback
   try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback }
@@ -303,6 +349,8 @@ function App() {
     score: item.averageScore ? (Number(item.averageScore) / 10).toFixed(1) : "—",
     year: Number(item.seasonYear || item.startDate?.year || new Date().getFullYear()),
     genre: item.genres?.[0] || "Anime",
+    genres: Array.isArray(item.genres) ? item.genres : [],
+    tags: Array.isArray(item.tags) ? item.tags.map((tag: any) => typeof tag === "string" ? tag : tag?.name).filter(Boolean) : [],
     isAdult: Boolean(item.isAdult),
     label: item.trending ? "TRENDING" : undefined,
   })
@@ -814,7 +862,7 @@ function App() {
     .filter(
       (a) =>
         a.title.toLowerCase().includes(query.toLowerCase()) &&
-        (genre === "All genres" || a.genre === genre) &&
+        (genre === "All genres" || a.genre === genre || a.genres?.includes(genre) || a.tags?.includes(genre)) &&
         (year === "All years" || String(a.year) === year) &&
         (seasonFilter === "All seasons" ||
           (storyFor(a.title)?.season || "All") === seasonFilter) &&
@@ -1150,14 +1198,7 @@ function App() {
             className={`dropdown ${menu === "genres" ? "genre-dropdown" : ""}`}
           >
             {(menu === "genres"
-              ? [
-                  "Action",
-                  "Adventure",
-                  "Fantasy",
-                  "Romance",
-                  "Comedy",
-                  "Sci-Fi",
-                ]
+              ? GENRE_OPTIONS
               : menu === "language"
                 ? ["English", "日本語", "Español"]
                 : ["My profile", "My watchlist", "Preferences", "Sign in"]
@@ -1396,14 +1437,7 @@ function App() {
               <section>
                 {heading("Find your kind of adventure")}
                 <div className="genre-grid">
-                  {[
-                    "Action",
-                    "Adventure",
-                    "Fantasy",
-                    "Romance",
-                    "Comedy",
-                    "Sci-Fi",
-                  ].map((g, i) => (
+                  {FEATURED_GENRES.map((g, i) => (
                     <button
                       key={g}
                       onClick={() => {
@@ -1508,19 +1542,7 @@ function App() {
                   value={genre}
                   onChange={(e) => setGenre(e.target.value)}
                 >
-                  {[
-                    "All genres",
-                    "Action",
-                    "Adventure",
-                    "Fantasy",
-                    "Romance",
-                    "Comedy",
-                    "Sci-Fi",
-                    "Horror",
-                    "Isekai",
-                    "Drama",
-                    "Slice of Life",
-                  ].map((g) => (
+                  {["All genres", ...GENRE_OPTIONS].map((g) => (
                     <option key={g}>{g}</option>
                   ))}
                 </select>
