@@ -742,7 +742,7 @@ function App() {
     )
   const card = (a: Anime, i: number) => (
     <article className="poster-card" key={a.title}>
-      <a className="poster" href={animePath(a.title)} onClick={(event) => { event.preventDefault(); detail(a) }} aria-label={"View " + a.title}>
+      <a className="poster" href={animePath(a.title)} onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); detail(a) }} aria-label={"View " + a.title}>
         <img src={a.image} alt={a.title} loading="lazy" />
         {a.label && (
           <span
@@ -824,7 +824,7 @@ function App() {
     <a
       className="episode-item"
       href={watchPath(selected.title, season, i + 1)}
-      onClick={(event) => { event.preventDefault(); watch(selected, i + 1, season) }}
+      onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); watch(selected, i + 1, season) }}
       key={i}
       aria-label={"Watch " + (isFilm(selected.title) ? "film" : "season " + season + ", episode " + (i + 1)) + ": " + title}
     >
