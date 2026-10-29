@@ -267,13 +267,30 @@ app.get("/api/anilist/movies", async (req, res) => {
     return res.status(400).json({ error: "Page must be between 1 and 1000." })
   }
   try {
-    const sort = search ? ["SEARCH_MATCH"] : ["POPULARITY_DESC"]
-    const perAdultGroup = 15
-    const query = "query($page: Int!, $perPage: Int!, $search: String, $sort: [MediaSort], $isAdult: Boolean!) { Page(page: $page, perPage: $perPage) { pageInfo { currentPage hasNextPage total } media(type: ANIME, format: MOVIE, search: $search, sort: $sort, isAdult: $isAdult) { " + MEDIA_FIELDS + " } } }"
-    const groups = await Promise.all([false, true].map(async (isAdult) => {
-      const data = await queryAniList(query, { page, perPage: perAdultGroup, search, sort, isAdult })
-      return { results: data.Page.media || [], pageInfo: data.Page.pageInfo || {} }
-    }))
+    const sort = search ? ["SEARCH_MATCH"] : ["POPULARITY_DESC", "SCORE_DESC"]
+    const fullQuery = "query($page: Int!, $perPage: Int!, $search: String, $sort: [MediaSort], $isAdult: Boolean!) { Page(page: $page, perPage: $perPage) { pageInfo { currentPage hasNextPage total } media(type: ANIME, format: MOVIE, search: $search, sort: $sort, isAdult: $isAdult) { " + MEDIA_FIELDS + " } } }"
+    const fallbackQuery = "query($page: Int!, $perPage: Int!, $search: String, $sort: [MediaSort], $isAdult: Boolean!) { Page(page: $page, perPage: $perPage) { pageInfo { currentPage hasNextPage total } media(type: ANIME, format: MOVIE, search: $search, sort: $sort, isAdult: $isAdult) { id idMal isAdult title { romaji english native } description(asHtml: false) coverImage { extraLarge large } bannerImage genres tags { name } season seasonYear startDate { year } averageScore popularity status episodes format } } }"
+    const groups = []
+    const errors = []
+    // Query each audience category independently so one upstream failure cannot blank the whole page.
+    for (const isAdult of [false, true]) {
+      const variables = { page, perPage: 30, search, sort, isAdult }
+      try {
+        const data = await queryAniList(fullQuery, variables)
+        groups.push({ results: data.Page.media || [], pageInfo: data.Page.pageInfo || {} })
+      } catch (fullError) {
+        try {
+          const data = await queryAniList(fallbackQuery, variables)
+          groups.push({ results: data.Page.media || [], pageInfo: data.Page.pageInfo || {} })
+        } catch (fallbackError) {
+          errors.push(String(fallbackError?.message || fullError?.message || "AniList request failed"))
+          console.error("AniList movie query failed for isAdult=" + isAdult + ":", fallbackError?.message || fullError?.message)
+        }
+      }
+    }
+    if (!groups.length) {
+      return res.status(502).json({ error: "AniList movie catalog is temporarily unavailable. Please retry shortly." })
+    }
     const unique = new Map()
     for (const group of groups) for (const item of group.results) unique.set(Number(item.id), item)
     let results = Array.from(unique.values())
@@ -289,10 +306,10 @@ app.get("/api/anilist/movies", async (req, res) => {
       results.sort((a, b) => Number(b.popularity || 0) - Number(a.popularity || 0))
     }
     res.set("Cache-Control", "public, max-age=300")
-    res.json({ results: results.slice(0, 30), pageInfo: { currentPage: page, perPage: 30, hasNextPage: groups.some((group) => group.pageInfo.hasNextPage), total: groups.reduce((sum, group) => sum + Number(group.pageInfo.total || 0), 0) } })
+    res.json({ results: results.slice(0, 30), pageInfo: { currentPage: page, perPage: 30, hasNextPage: groups.some((group) => group.pageInfo.hasNextPage), total: groups.reduce((sum, group) => sum + Number(group.pageInfo.total || 0), 0) }, partial: groups.length < 2 })
   } catch (error) {
-    console.error("AniList movie query failed:", error?.message || error)
-    res.status(502).json({ error: "Unable to load anime movies from AniList" })
+    console.error("AniList movie endpoint failed:", error?.message || error)
+    res.status(502).json({ error: "AniList movie catalog is temporarily unavailable. Please retry shortly." })
   }
 })
 app.get("/api/anilist/trending", async (_req, res) => {
