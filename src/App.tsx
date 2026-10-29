@@ -337,6 +337,7 @@ function App() {
   const [routePath, setRoutePath] = useState(() => typeof window === "undefined" ? "/" : window.location.pathname)
   const lastAppliedRouteRef = useRef("")
   const resolvedRouteRef = useRef("")
+  const metadataRequestRef = useRef("")
   const [airingSchedule, setAiringSchedule] = useState<ScheduleRelease[]>([])
   const [scheduleLoading, setScheduleLoading] = useState(false)
   const [scheduleError, setScheduleError] = useState("")
@@ -449,6 +450,10 @@ function App() {
     return () => { active = false }
   }, [page])
   useEffect(() => {
+    if (page !== "Details" && page !== "Player") return
+    const requestKey = String(selected.id || "") + ":" + selected.title
+    if (metadataRequestRef.current === requestKey && (aniListMeta || aniListDetails)) return
+    metadataRequestRef.current = requestKey
     let active = true
     const loadMetadata = async () => {
       setMetadataLoading(true)
@@ -472,12 +477,12 @@ function App() {
         setKitsuAnime(kitsuData.anime || null)
         setKitsuEpisodes(Array.isArray(kitsuData.episodes) ? kitsuData.episodes : [])
       } catch {
-        if (active) { setAniListId(selected.id ? Number(selected.id) : null); setAniListMeta(null); setAniListDetails(null); setKitsuAnime(null); setKitsuEpisodes([]) }
+        if (active) { metadataRequestRef.current = ""; setAniListId(selected.id ? Number(selected.id) : null); setAniListMeta(null); setAniListDetails(null); setKitsuAnime(null); setKitsuEpisodes([]) }
       } finally { if (active) { setMetadataLoading(false); setAniListDetailsLoading(false) } }
     }
     void loadMetadata()
     return () => { active = false }
-  }, [selected.title, selected.id])
+  }, [selected.title, selected.id, page])
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) return
     let active = true
