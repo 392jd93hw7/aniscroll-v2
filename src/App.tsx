@@ -663,9 +663,11 @@ function App() {
     : ""
   const nextEpisode = () => {
     if (episode >= episodeCount) return
-    setEpisode((e) => e + 1)
+    const next = episode + 1
+    setEpisode(next)
     setProgress(0)
     setControlsVisible(true)
+    writePath(watchPath(selected.title, season, next))
   }
   const toggleFullscreen = async () => {
     try {
@@ -713,7 +715,7 @@ function App() {
     setPlayerSettings(false)
     if (saved.includes(a.title))
       setStatuses((status) => ({ ...status, [a.title]: "Currently Watching" }))
-    go("Player")
+    go("Player", watchPath(a.title, s, e))
   }
   const libraryTitles = catalog
     .filter((a) => {
@@ -1538,7 +1540,7 @@ function App() {
                       onClick={async () => {
                         try {
                           await navigator.clipboard.writeText(
-                            `${location.origin}/#${encodeURIComponent(selected.title)}`,
+                            `${location.origin}${animePath(selected.title)}`,
                           )
                           notify("Share link copied")
                         } catch {
