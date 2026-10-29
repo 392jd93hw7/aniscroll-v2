@@ -742,9 +742,7 @@ function App() {
     )
   const card = (a: Anime, i: number) => (
     <article className="poster-card" key={a.title}>
-      <button
-        className="poster"
-        onClick={() => detail(a)}
+      <a className="poster" href={animePath(a.title)} onClick={(event) => { event.preventDefault(); detail(a) }} aria-label={"View " + a.title}> detail(a)}
         aria-label={`View ${a.title}`}
       >
         <img src={a.image} alt={a.title} loading="lazy" />
@@ -761,7 +759,7 @@ function App() {
           View anime
         </span>
         {page === "Home" && <span className="rank">{i + 1}</span>}
-      </button>
+      </a>
       <div className="poster-bottom">
         <button onClick={() => detail(a)} title={a.title}>
           {a.title}
@@ -825,10 +823,13 @@ function App() {
     </div>
   )
   const episodes = episodeTitles.map((title, i) => (
-    <button
+    <a
       className="episode-item"
+      href={watchPath(selected.title, season, i + 1)}
+      onClick={(event) => { event.preventDefault(); watch(selected, i + 1, season) }}
       key={i}
-      onClick={() => watch(selected, i + 1, season)}
+      aria-label={"Watch " + (isFilm(selected.title) ? "film" : "season " + season + ", episode " + (i + 1)) + ": " + title}
+    > watch(selected, i + 1, season)}
       aria-label={`Watch ${
         isFilm(selected.title) ? "film" : `season ${season}, episode ${i + 1}`
       }: ${title}`}
@@ -865,7 +866,7 @@ function App() {
         </p>
       </div>
       <Icon name="play" />
-    </button>
+    </a>
   ))
   useEffect(() => {
     if (page !== "Player") return
