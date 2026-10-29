@@ -758,6 +758,15 @@ function App() {
     }
   }, [page, metadataLoading, episodeCount, episode, season, selected.title])
 
+  const aniListCharacterEdges = Array.isArray(aniListDetails?.characters?.edges) ? aniListDetails.characters.edges.filter((edge: any) => edge?.node) : []
+  const aniListRelatedAnime = (Array.isArray(aniListDetails?.relations?.edges) ? aniListDetails.relations.edges : [])
+    .filter((edge: any) => edge?.node?.type === "ANIME" && edge.node.id !== aniListDetails?.id)
+    .map((edge: any) => ({ ...normalizeAniList(edge.node), relationType: String(edge.relationType || "RELATED") }))
+  const aniListRecommendations = (Array.isArray(aniListDetails?.recommendations?.nodes) ? aniListDetails.recommendations.nodes : [])
+    .map((item: any) => item?.mediaRecommendation)
+    .filter((item: any) => item?.type === "ANIME" && item.id !== aniListDetails?.id)
+    .map((item: any) => normalizeAniList(item))
+
   const scheduleDays = Array.from({ length: 7 }, (_, offset) => {
     const date = new Date()
     date.setHours(0, 0, 0, 0)
