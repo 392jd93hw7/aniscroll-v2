@@ -867,6 +867,84 @@ function App() {
       <Icon name="play" />
     </button>
   ))
+  useEffect(() => {
+    if (page !== "Player") return
+    const canonicalPath = watchPath(selected.title, season, episode)
+    if (window.location.pathname !== canonicalPath) writePath(canonicalPath, true)
+  }, [page, selected.title, season, episode])
+  useEffect(() => {
+    const isAnimeRoute = page === "Details" || page === "Player"
+    const pageLabel = page === "Auth" ? "Sign in" : page
+    const title = page === "Details"
+      ? selected.title + " Anime — Synopsis, Episodes & Info | Aniscroll"
+      : page === "Player"
+        ? "Watch " + selected.title + " Season " + season + " Episode " + episode + " | Aniscroll"
+        : page === "Home"
+          ? "Aniscroll — Anime, discovered your way"
+          : pageLabel + " | Aniscroll"
+    const rawDescription = isAnimeRoute
+      ? String(aniListMeta?.description || selected.synopsis || "Explore the story and world of this anime.")
+      : page === "Discover" || page === "Anime"
+        ? "Discover popular anime, explore genres, and find your next favorite series on Aniscroll."
+        : page === "Movies"
+          ? "Explore anime movies, from beloved classics to new favorites, on Aniscroll."
+          : "Discover anime with Aniscroll, your guide to anime stories, episodes, and recommendations."
+    const description = rawDescription.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 300)
+    document.title = title
+    const setMeta = (key: string, value: string, attribute: "name" | "property" = "name") => {
+      let tag = document.head.querySelector<HTMLMetaElement>('meta[' + attribute + '="' + key + '"]')
+      if (!tag) {
+        tag = document.createElement("meta")
+        tag.setAttribute(attribute, key)
+        document.head.appendChild(tag)
+      }
+      tag.setAttribute("content", value)
+    }
+    const canonicalPath = window.location.pathname
+    let canonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+    if (!canonical) {
+      canonical = document.createElement("link")
+      canonical.rel = "canonical"
+      document.head.appendChild(canonical)
+    }
+    canonical.href = window.location.origin + canonicalPath
+    setMeta("description", description || "Discover anime with Aniscroll.")
+    setMeta("robots", ["Watchlist", "Profile", "Admin", "Auth"].includes(page) ? "noindex,follow" : "index,follow")
+    setMeta("og:title", title, "property")
+    setMeta("og:description", description || "Discover anime with Aniscroll.", "property")
+    setMeta("og:url", window.location.origin + canonicalPath, "property")
+    setMeta("og:type", page === "Player" ? "video.episode" : isAnimeRoute ? (isFilm(selected.title) ? "video.movie" : "video.tv_show") : "website", "property")
+    setMeta("og:image", isAnimeRoute ? (selected.banner || selected.image) : "https://placehold.co/1200x630/17131f/e8dcff?text=Aniscroll", "property")
+    setMeta("twitter:card", "summary_large_image")
+    setMeta("twitter:title", title)
+    setMeta("twitter:description", description || "Discover anime with Aniscroll.")
+    if (isAnimeRoute) {
+      const rating = Number(selected.score)
+      const structuredData: Record<string, any> = {
+        "@context": "https://schema.org",
+        "@type": isFilm(selected.title) ? "Movie" : "TVSeries",
+        name: selected.title,
+        description: description || "Explore " + selected.title + " on Aniscroll.",
+        image: selected.banner || selected.image,
+        datePublished: String(selected.year),
+        genre: selected.genre,
+        url: window.location.origin + canonicalPath,
+      }
+      if (Number.isFinite(rating) && rating > 0) {
+        structuredData.aggregateRating = { "@type": "AggregateRating", ratingValue: rating, bestRating: 10 }
+      }
+      let schema = document.getElementById("anime-structured-data") as HTMLScriptElement | null
+      if (!schema) {
+        schema = document.createElement("script")
+        schema.id = "anime-structured-data"
+        schema.type = "application/ld+json"
+        document.head.appendChild(schema)
+      }
+      schema.textContent = JSON.stringify(structuredData)
+    } else {
+      document.getElementById("anime-structured-data")?.remove()
+    }
+  }, [page, selected.title, selected.image, selected.banner, selected.synopsis, selected.year, selected.genre, selected.score, aniListMeta, routePath, season, episode])
   return (
     <>
       <a className="skip-link" href="#main-content">
