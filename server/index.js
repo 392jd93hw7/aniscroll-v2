@@ -102,7 +102,14 @@ async function queryAniListMedia({ search = null, perPage = 24, sort = ["POPULAR
   }))
   const unique = new Map()
   for (const item of variants.flat()) unique.set(Number(item.id), item)
-  return Array.from(unique.values())
+  const results = Array.from(unique.values())
+  if (search) {
+    const normalize = (value) => String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
+    const needle = normalize(search)
+    const exactMatch = (item) => [item.title?.english, item.title?.romaji, item.title?.native].some((title) => normalize(title) === needle)
+    results.sort((a, b) => Number(exactMatch(b)) - Number(exactMatch(a)))
+  }
+  return results
 }
 function slugify(value) {
   return String(value || "")
@@ -235,9 +242,16 @@ app.get("/api/anilist/schedule", async (req, res) => {
     return res.status(400).json({ error: "Provide a valid schedule range of up to 15 days." })
   }
   try {
-    const query = "query($from: Int!, $to: Int!) { Page(page: 1, perPage: 50) { airingSchedules(airingAt_greater: $from, airingAt_lesser: $to, sort: TIME) { id airingAt timeUntilAiring episode media { " + MEDIA_FIELDS + " } } } }"
-    const data = await queryAniList(query, { from, to })
-    const results = (data.Page.airingSchedules || []).filter((item) => item.media).sort((a, b) => a.airingAt - b.airingAt)
+    const query = "query($from: Int!, $to: Int!, $page: Int!) { Page(page: $page, perPage: 50) { pageInfo { hasNextPage } airingSchedules(airingAt_greater: $from, airingAt_lesser: $to, sort: [TIME]) { id airingAt timeUntilAiring episode media { " + MEDIA_FIELDS + " } } } }"
+    const releases = []
+    for (let page = 1; page <= 5; page += 1) {
+      const data = await queryAniList(query, { from, to, page })
+      releases.push(...(data.Page.airingSchedules || []))
+      if (!data.Page.pageInfo?.hasNextPage) break
+    }
+    const unique = new Map()
+    for (const release of releases) if (release.media) unique.set(Number(release.id), release)
+    const results = Array.from(unique.values()).sort((a, b) => a.airingAt - b.airingAt)
     res.set("Cache-Control", "public, max-age=300")
     res.json({ results })
   } catch {
