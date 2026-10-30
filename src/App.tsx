@@ -111,11 +111,11 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
 const PAGE_PATHS: Record<string, string> = {
-  Home: "/", Discover: "/discover", Movies: "/movies",
+  Home: "/", Discover: "/discover", Movies: "/movie",
   Schedule: "/schedule", Watchlist: "/watchlist", Profile: "/profile",
   Admin: "/admin", Auth: "/sign-in",
 }
-const PATH_PAGES: Record<string, string> = Object.fromEntries(Object.entries(PAGE_PATHS).map(([page, path]) => [path, page]))
+const PATH_PAGES: Record<string, string> = { ...Object.fromEntries(Object.entries(PAGE_PATHS).map(([page, path]) => [path, page])), "/movies": "Movies" }
 const localDateKey = (date: Date) => date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0")
 const animePath = (title: string) => "/anime/" + slugify(title)
 const watchPath = (title: string, season: number, episode: number) => "/watch/" + slugify(title) + "/season-" + season + "/episode-" + episode
@@ -355,7 +355,7 @@ function App() {
     [animeError, setAnimeError] = useState(""),
     [animeReloadNonce, setAnimeReloadNonce] = useState(0),
     [movieResults, setMovieResults] = useState<Anime[]>([]),
-    [moviesPage, setMoviesPage] = useState(1),
+    [moviesPage, setMoviesPage] = useState(() => { const value = Number(new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("page") || 1); return Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1 }),
     [moviesHasNextPage, setMoviesHasNextPage] = useState(false),
     [moviesLoading, setMoviesLoading] = useState(false),
     [moviesError, setMoviesError] = useState(""),
@@ -512,26 +512,35 @@ function App() {
     return () => { active = false }
   }, [page])
   useEffect(() => {
-    if (page !== "Discover") return
+    const path = window.location.pathname.replace(/\\/+$/, "") || "/"
+    const isDiscover = page === "Discover" && path === "/discover"
+    const isMovies = page === "Movies" && (path === "/movie" || path === "/movies")
+    if (!isDiscover && !isMovies) return
+
+    const currentPage = isDiscover ? animePage : moviesPage
     const params = new URLSearchParams(window.location.search)
     const urlPage = Number(params.get("page") || 1)
-    if (Number.isSafeInteger(urlPage) && urlPage > 0 && urlPage !== animePage) {
-      setAnimePage(Math.min(urlPage, 1000))
+    if (Number.isSafeInteger(urlPage) && urlPage > 0 && urlPage !== currentPage) {
+      if (isDiscover) setAnimePage(Math.min(urlPage, 1000))
+      else setMoviesPage(Math.min(urlPage, 1000))
       return
     }
+
     const nextUrl = new URL(window.location.href)
-    if (animePage <= 1) nextUrl.searchParams.delete("page")
-    else nextUrl.searchParams.set("page", String(animePage))
+    if (currentPage <= 1) nextUrl.searchParams.delete("page")
+    else nextUrl.searchParams.set("page", String(currentPage))
     const next = nextUrl.pathname + nextUrl.search + nextUrl.hash
     const current = window.location.pathname + window.location.search + window.location.hash
     if (next !== current) window.history.pushState({ path: nextUrl.pathname }, "", next)
-  }, [page, animePage])
+  }, [page, animePage, moviesPage])
 
   useEffect(() => {
     const handlePagePopState = () => {
-      if (window.location.pathname.replace(/\/+$/, "") !== "/discover") return
+      const path = window.location.pathname.replace(/\\/+$/, "") || "/"
       const value = Number(new URLSearchParams(window.location.search).get("page") || 1)
-      setAnimePage(Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1)
+      const safePage = Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1
+      if (path === "/discover") setAnimePage(safePage)
+      if (path === "/movie" || path === "/movies") setMoviesPage(safePage)
     }
     window.addEventListener("popstate", handlePagePopState)
     return () => window.removeEventListener("popstate", handlePagePopState)
