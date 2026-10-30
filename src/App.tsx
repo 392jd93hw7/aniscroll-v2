@@ -1143,7 +1143,7 @@ function App() {
         const dubServers = payload.languageAvailability.dub && Array.isArray(payload.available?.dub) ? payload.available.dub : []
         const verifiedPayload = { ...payload, available: { sub: subServers, dub: dubServers } }
         setAudioAvailability(verifiedPayload)
-        const chosenTrack = (payload.available?.[audioTrack] || []).length ? audioTrack : subServers.length ? "sub" : dubServers.length ? "dub" : null
+        const chosenTrack = (verifiedPayload.available?.[audioTrack] || []).length ? audioTrack : subServers.length ? "sub" : dubServers.length ? "dub" : null
         if (!chosenTrack) return
         if (chosenTrack !== audioTrack) setAudioTrack(chosenTrack)
         const servers = chosenTrack === "sub" ? subServers : dubServers
