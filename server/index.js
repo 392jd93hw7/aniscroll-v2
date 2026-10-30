@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url"
 
 const app = express()
 app.disable("x-powered-by")
+if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1)
 app.use((req, res, next) => {
   res.set("X-Content-Type-Options", "nosniff")
   res.set("X-Frame-Options", "DENY")
