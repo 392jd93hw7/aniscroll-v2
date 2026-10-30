@@ -536,7 +536,7 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .watch-current-title { color:#c6bdcf; font-size:12px; }
 .watch-next-button,.watch-details-button { display:inline-flex; align-items:center; justify-content:center; gap:10px; min-height:40px; padding:0 16px; border-radius:4px; background:#8d5cf0; color:#fff; font-size:11px; font-weight:700; }
 .watch-next-button:disabled { opacity:.45; cursor:not-allowed; }
-.watch-episode-sidebar { min-width:0; overflow:hidden; border:1px solid #302b38; border-radius:4px; background:#121116; }
+.watch-episode-sidebar { position:sticky; top:92px; min-width:0; max-height:calc(100vh - 112px); overflow:hidden; display:flex; flex-direction:column; border:1px solid #302b38; border-radius:4px; background:#121116; }
 .watch-sidebar-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid #2b2731; }
 .watch-sidebar-heading h2 { color:#f7f3fa; font-size:15px; font-weight:750; }
 .watch-sidebar-heading h2 span { display:inline-grid; place-items:center; min-width:20px; height:19px; margin-left:5px; padding:0 5px; border-radius:3px; background:#211c2b; color:#bba1ec; font-size:10px; }
@@ -551,7 +551,7 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .watch-episode-search input { width:100%; min-width:0; border:0; outline:0; background:transparent; color:#f3eef8; font-size:10px; }
 .watch-episode-search input::placeholder { color:#81798c; }
 .watch-episode-summary { display:flex; justify-content:space-between; gap:8px; margin-top:18px; color:#9c93a8; font-size:9px; }
-.watch-episode-scroll { display:flex; flex-direction:column; gap:9px; max-height:385px; margin:0 10px 0 18px; padding:4px 8px 8px 0; overflow:auto; scrollbar-width:thin; scrollbar-color:#57456f transparent; }
+.watch-episode-scroll { display:flex; flex-direction:column; gap:9px; max-height:385px; flex:0 1 auto; min-height:90px; margin:0 10px 0 18px; padding:4px 8px 8px 0; overflow:auto; scrollbar-width:thin; scrollbar-color:#57456f transparent; }
 .watch-episode-card { position:relative; display:grid; grid-template-columns:116px minmax(0,1fr) auto; align-items:center; gap:12px; min-height:88px; padding:9px; border:1px solid #302b38; border-radius:4px; background:#0e0d12; color:inherit; text-decoration:none; }
 .watch-episode-card:hover { border-color:#8061b7; background:#17131f; }
 .watch-episode-card.is-current { border-color:#9e72f5; background:#1b1625; box-shadow:inset 3px 0 #a477ff; }
@@ -622,8 +622,8 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .watch-related-image i { position:absolute; left:7px; bottom:7px; padding:3px 5px; background:#08080bdc; color:#fff; font-size:7px; font-style:normal; }
 .watch-related-card strong { overflow:hidden; color:#f3eef8; font-size:10px; line-height:1.4; text-overflow:ellipsis; white-space:nowrap; }
 .watch-related-card small { color:#9e95a9; font-size:9px; }
-.watch-theater-mode .watch-main-grid { grid-template-columns:minmax(0,1fr) 340px; }
-.watch-theater-mode .watch-player-frame { border-color:#62458c; box-shadow:0 0 0 1px #8f62d51a; }
+.watch-main-grid.watch-theater-mode { grid-template-columns:minmax(0,1fr) 340px; }
+.watch-main-grid.watch-theater-mode .watch-player-frame { border-color:#62458c; box-shadow:0 0 0 1px #8f62d51a; }
 
 @media (max-width: 1120px) {
   .watch-page-shell { width:calc(100% - 48px); }
@@ -635,7 +635,7 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 }
 @media (max-width: 860px) {
   .watch-main-grid { grid-template-columns:minmax(0,1fr); }
-  .watch-episode-sidebar { order:2; }
+  .watch-episode-sidebar { position:static; order:2; max-height:none; }
   .watch-episode-scroll { max-height:340px; }
   .watch-about-section { grid-template-columns:minmax(0,1fr); gap:20px; }
   .watch-editorial-card { border-left:0; border-top:1px solid #39313f; padding:20px 0 0; }
