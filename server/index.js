@@ -397,20 +397,28 @@ app.get("/api/anilist/genre-banners", async (_req, res) => {
       const payload = await queryAniList("query { " + selections.join(" ") + " }")
       const items = await Promise.all(genreFilters.map(async (filter, index) => {
         const candidates = payload["genre" + index]?.media || []
-        const anime = candidates[0] || null
-        if (!anime) return { genre: filter.name, title: null, anilistId: null, banner: null, image: null, imageSource: null }
+        if (!candidates.length) return { genre: filter.name, title: null, anilistId: null, banner: null, image: null, imageSource: null }
+        let anime = candidates[0]
         let kitsuBanner = null
-        try {
-          const record = await cached("KITSU_GENRE_BANNER:" + anime.id, async () => findKitsuAnime(Number(anime.id)), 12 * 60 * 60 * 1000)
-          const attributes = record?.attributes || {}
-          const cover = attributes.coverImage || {}
-          const titleNames = [anime.title?.english, anime.title?.romaji, anime.title?.native].filter(Boolean)
-          const kitsuNames = [attributes.canonicalTitle, attributes.titles?.en, attributes.titles?.en_jp, attributes.titles?.ja_jp].filter(Boolean)
-          const normalizeTitle = (value) => String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
-          const titleMatches = titleNames.some((title) => kitsuNames.some((kitsuTitle) => normalizeTitle(title) === normalizeTitle(kitsuTitle)))
-          if (titleMatches) kitsuBanner = cover.original || cover.large || cover.small || null
-        } catch (error) {
-          console.warn("Kitsu genre banner lookup failed for AniList ID " + anime.id + ":", error?.message || error)
+        const normalizeTitle = (value) => String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
+        // Prefer the highest-trending candidate with a verified matching Kitsu cover image.
+        for (const candidate of candidates.slice(0, 3)) {
+          try {
+            const record = await cached("KITSU_GENRE_BANNER:" + candidate.id, async () => findKitsuAnime(Number(candidate.id)), 12 * 60 * 60 * 1000)
+            const attributes = record?.attributes || {}
+            const cover = attributes.coverImage || {}
+            const titleNames = [candidate.title?.english, candidate.title?.romaji, candidate.title?.native].filter(Boolean)
+            const kitsuNames = [attributes.canonicalTitle, attributes.titles?.en, attributes.titles?.en_jp, attributes.titles?.ja_jp].filter(Boolean)
+            const titleMatches = titleNames.some((title) => kitsuNames.some((kitsuTitle) => normalizeTitle(title) === normalizeTitle(kitsuTitle)))
+            const banner = titleMatches ? cover.original || cover.large || cover.small || null : null
+            if (banner) {
+              anime = candidate
+              kitsuBanner = banner
+              break
+            }
+          } catch (error) {
+            console.warn("Kitsu genre banner lookup failed for AniList ID " + candidate.id + ":", error?.message || error)
+          }
         }
         const fallback = anime.bannerImage || anime.coverImage?.extraLarge || anime.coverImage?.large || null
         return {
