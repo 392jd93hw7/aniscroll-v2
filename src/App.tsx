@@ -348,7 +348,7 @@ function App() {
     [homeGenreLoading, setHomeGenreLoading] = useState(false),
     [homeGenreError, setHomeGenreError] = useState(""),
     [animeResults, setAnimeResults] = useState<Anime[]>([]),
-    [animePage, setAnimePage] = useState(1),
+    [animePage, setAnimePage] = useState(() => { const value = Number(new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("page") || 1); return Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1 }),
     [animeHasNextPage, setAnimeHasNextPage] = useState(false),
     [animeTotal, setAnimeTotal] = useState(0),
     [animeLoading, setAnimeLoading] = useState(false),
@@ -511,6 +511,32 @@ function App() {
       .finally(() => { if (active) setHomeTrendingLoading(false) })
     return () => { active = false }
   }, [page])
+  useEffect(() => {
+    if (page !== "Discover") return
+    const params = new URLSearchParams(window.location.search)
+    const urlPage = Number(params.get("page") || 1)
+    if (Number.isSafeInteger(urlPage) && urlPage > 0 && urlPage !== animePage) {
+      setAnimePage(Math.min(urlPage, 1000))
+      return
+    }
+    const nextUrl = new URL(window.location.href)
+    if (animePage <= 1) nextUrl.searchParams.delete("page")
+    else nextUrl.searchParams.set("page", String(animePage))
+    const next = nextUrl.pathname + nextUrl.search + nextUrl.hash
+    const current = window.location.pathname + window.location.search + window.location.hash
+    if (next !== current) window.history.pushState({ path: nextUrl.pathname }, "", next)
+  }, [page, animePage])
+
+  useEffect(() => {
+    const handlePagePopState = () => {
+      if (window.location.pathname.replace(/\\/+$/, "") !== "/discover") return
+      const value = Number(new URLSearchParams(window.location.search).get("page") || 1)
+      setAnimePage(Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1)
+    }
+    window.addEventListener("popstate", handlePagePopState)
+    return () => window.removeEventListener("popstate", handlePagePopState)
+  }, [])
+
   useEffect(() => {
     if (page !== "Anime" && page !== "Discover") return
     let active = true
