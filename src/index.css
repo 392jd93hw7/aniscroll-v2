@@ -231,6 +231,6 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{ou
 @media(max-width:600px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.watch-episode-scroll.is-grid .watch-episode-card{aspect-ratio:1/1}.watch-episode-scroll.is-grid .watch-episode-eyebrow{font-size:9px}}
 @media(min-width:1500px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:5px}.watch-episode-scroll.is-grid .watch-episode-card{aspect-ratio:1/1}}
 
-/* Keep the watch page content clear of the absolute-positioned global navbar. */
-.watch-page-shell{padding-top:100px}
-@media(max-width:800px){.watch-page-shell{padding-top:82px}}
+/* Put the global navbar in normal flow so it appears above watch-page content. */
+.navigation{position:relative;top:auto;left:auto;right:auto;background:#09090b}
+.watch-page-shell{padding-top:0}
