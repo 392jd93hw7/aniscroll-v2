@@ -40,7 +40,7 @@ export default function WatchPage() {
   const heroArtwork = selected.banner || selected.image || ""
   const availableSubServers: string[] = audioAvailability?.languageAvailability?.sub === true && Array.isArray(audioAvailability?.available?.sub) ? audioAvailability.available.sub : []
   const availableDubServers: string[] = audioAvailability?.languageAvailability?.dub === true && Array.isArray(audioAvailability?.available?.dub) ? audioAvailability.available.dub : []
-  const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-1"]?.[audioTrack]) ? audioAvailability.providers["HD-1"][audioTrack] : []
+  const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-3"]?.[audioTrack]) ? audioAvailability.providers["HD-1"][audioTrack] : []
   const mikazaProviderDirectory = [
     { id: "haiku", label: "Haiku" },
     { id: "kira", label: "Kira" },
@@ -51,7 +51,7 @@ export default function WatchPage() {
     .map((provider, index) => ({ ...provider, kind: index === 0 ? "Available" : "Fallback" }))
   const selectServer = (server: string, language: "sub" | "dub") => {
     const providerOptions = audioAvailability?.providers?.[server]?.[language] || []
-    if (server === "HD-1" && providerOptions.length) setMikazaProvider(providerOptions[0])
+    if (server === "HD-3" && providerOptions.length) setMikazaProvider(providerOptions[0])
     setStreamServer(server)
     setAudioTrack(language)
     setEmbedError(false)
@@ -66,10 +66,10 @@ export default function WatchPage() {
     }
     setEmbedError(false)
     setMikazaProvider(nextProvider.id)
-    notify("Switched HD-1 to Mikaza " + nextProvider.label + ".")
+    notify("Switched HD-3 to Mikaza " + nextProvider.label + ".")
   }
   const handleEmbedError = () => {
-    if (streamServer === "HD-1") {
+    if (streamServer === "HD-3") {
       const currentIndex = mikazaProviders.findIndex((provider) => provider.id === mikazaProvider)
       const nextProvider = mikazaProviders[currentIndex + 1]
       if (nextProvider) {
@@ -222,9 +222,9 @@ export default function WatchPage() {
                 </>
               )}
             </div>
-            {streamServer === "HD-1" && mikazaProviders.length > 1 && (
+            {streamServer === "HD-3" && mikazaProviders.length > 1 && (
               <div className="watch-mikaza-fallbacks">
-                <strong>HD-1 PROVIDER</strong>
+                <strong>HD-3 PROVIDER</strong>
                 <div>
                   {mikazaProviders.map((provider) => (
                     <button key={provider.id} className={mikazaProvider === provider.id ? "active" : ""} aria-pressed={mikazaProvider === provider.id} onClick={() => { setMikazaProvider(provider.id); setEmbedError(false) }}>
