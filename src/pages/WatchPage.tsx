@@ -7,7 +7,7 @@ export default function WatchPage() {
     volume, setVolume, autoplay, setAutoplay, controlsVisible, setControlsVisible,
     playerSettings, setPlayerSettings, fullscreen, toggleFullscreen, subtitles, setSubtitles,
     speed, setSpeed, quality, setQuality, audioTrack, setAudioTrack, streamServer,
-    setStreamServer, embedError, setEmbedError, metadataLoading, notify, detail,
+    setStreamServer, mikazaProvider, setMikazaProvider, embedError, setEmbedError, metadataLoading, notify, detail,
     info, duration, episodeCount, episodeTitles, kitsuEpisodes, history, saved, toggle,
     embedUrl, nextEpisode, watch, go, aniListMeta, aniListDetails, anime, isFilm,
     formatTime, Icon, Logo, watchPath
@@ -38,6 +38,22 @@ export default function WatchPage() {
   const genres = aniListDetails?.genres || selected.genres || [selected.genre].filter(Boolean)
   const poster = selected.image || selected.banner || ""
   const heroArtwork = selected.banner || selected.image || ""
+  const mikazaProviders = [
+    { id: "kira", label: "Kira", kind: "Primary" },
+    { id: "haiku", label: "Haiku", kind: "Fallback" },
+    { id: "naoka", label: "Naoka", kind: "Fallback" },
+  ]
+  const handleEmbedError = () => {
+    setEmbedError(true)
+    if (streamServer !== "HD-1") return
+    const currentIndex = mikazaProviders.findIndex((provider) => provider.id === mikazaProvider)
+    const nextProvider = mikazaProviders[currentIndex + 1]
+    if (nextProvider) {
+      notify("HD-1 unavailable. Trying Mikaza " + nextProvider.label + "…")
+      setMikazaProvider(nextProvider.id)
+      setEmbedError(false)
+    }
+  }
   const goToEpisode = (episodeNumber: number) => {
     if (typeof watch === "function") watch(selected, episodeNumber, season)
   }
@@ -78,7 +94,7 @@ export default function WatchPage() {
                 allowFullScreen
                 referrerPolicy="no-referrer"
                 onLoad={() => setEmbedError(false)}
-                onError={() => setEmbedError(true)}
+                onError={handleEmbedError}
               />
             ) : (
               <div className="watch-player-ready">
@@ -168,6 +184,19 @@ export default function WatchPage() {
               <div className="watch-server-group"><strong>SUB</strong>{["HD-1", "HD-2", "HD-3"].map((server) => <button key={"sub-" + server} disabled={server === "HD-3" && streamServer === "HD-3" && false} className={streamServer === server && audioTrack === "sub" ? "active" : ""} onClick={() => { setStreamServer(server); setAudioTrack("sub"); setEmbedError(false) }}>{server}</button>)}</div>
               <div className="watch-server-group"><strong>DUB</strong>{["HD-1", "HD-2", "HD-3"].map((server) => <button key={"dub-" + server} className={streamServer === server && audioTrack === "dub" ? "active" : ""} onClick={() => { setStreamServer(server); setAudioTrack("dub"); setEmbedError(false) }}>{server}</button>)}</div>
             </div>
+            {streamServer === "HD-1" && (
+              <div className="watch-mikaza-fallbacks">
+                <strong>HD-1 PROVIDER</strong>
+                <div>
+                  {mikazaProviders.map((provider) => (
+                    <button key={provider.id} className={mikazaProvider === provider.id ? "active" : ""} aria-pressed={mikazaProvider === provider.id} onClick={() => { setMikazaProvider(provider.id); setEmbedError(false) }}>
+                      {provider.label}<small>{provider.kind}</small>
+                    </button>
+                  ))}
+                </div>
+                <span>Kira is primary. Haiku and Naoka are fallback embeds.</span>
+              </div>
+            )}
             <p className={embedError ? "watch-server-note is-error" : "watch-server-note"}>{embedError ? "This source may be unavailable. Try another server." : "Choose a source to load the selected audio track. Availability depends on the provider."}</p>
           </section>
 
