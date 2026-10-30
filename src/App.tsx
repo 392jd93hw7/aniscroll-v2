@@ -549,17 +549,40 @@ function App() {
     if (year !== "All years") params.set("year", year)
     if (seasonFilter !== "All seasons") params.set("season", seasonFilter)
     const requestTimer = window.setTimeout(() => {
-      void fetch("/api/catalog/anime?" + params.toString(), { cache: "no-store" })
+      const gqlQuery = "        query DiscoverAnime($page: Int, $perPage: Int, $search: String, $genres: [String], $season: MediaSeason, $seasonYear: Int, $sort: [MediaSort]) {\n          Page(page: $page, perPage: $perPage) {\n            pageInfo { currentPage hasNextPage perPage }\n            media(type: ANIME, search: $search, genre_in: $genres, season: $season, seasonYear: $seasonYear, sort: $sort, isAdult: false) {\n              id idMal\n              title { romaji english native }\n              coverImage { large extraLarge color }\n              bannerImage description(asHtml: false) genres averageScore popularity episodes status season seasonYear format\n              startDate { year month day }\n              studios(isMain: true) { nodes { name } }\n              countryOfOrigin isAdult\n            }\n          }\n        }"
+      const sortMap: Record<string, string[]> = {
+        Popularity: ["POPULARITY_DESC"],
+        "Recently Added": ["ID_DESC"],
+        "Top Rated": ["SCORE_DESC"],
+        Trending: ["TRENDING_DESC"],
+        "Release Date": ["START_DATE_DESC"],
+      }
+      const variables: Record<string, unknown> = {
+        page: animePage,
+        perPage: 30,
+        sort: sortMap[sort] || ["POPULARITY_DESC"],
+      }
+      if (term) variables.search = term
+      if (genre !== "All genres") variables.genres = [genre]
+      if (seasonFilter !== "All seasons") variables.season = seasonFilter.toUpperCase()
+      if (year !== "All years") variables.seasonYear = Number(year)
+      void fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ query: gqlQuery, variables }),
+      })
         .then(async (response) => {
           const payload = await response.json().catch(() => ({}))
-          if (!response.ok) throw new Error(payload.error || "Could not load anime from AniList")
-          return payload
+          if (!response.ok || payload.errors?.length) {
+            throw new Error(payload.errors?.[0]?.message || "Could not load anime from AniList")
+          }
+          return payload.data?.Page
         })
         .then((payload) => {
           if (!active) return
-          setAnimeResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
-          setAnimeHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
-          setAnimeTotal(Number(payload.pageInfo?.total || 0))
+          setAnimeResults(Array.isArray(payload?.media) ? payload.media.map(normalizeAniList) : [])
+          setAnimeHasNextPage(Boolean(payload?.pageInfo?.hasNextPage))
+          setAnimeTotal(0)
         })
         .catch((error) => {
           if (!active) return
