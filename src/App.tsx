@@ -359,7 +359,7 @@ function App() {
     [kitsuAnime, setKitsuAnime] = useState<any>(null),
     [kitsuEpisodes, setKitsuEpisodes] = useState<any[]>([]),
     [streamServer, setStreamServer] = useState("HD-1"),
-    [mikazaProvider, setMikazaProvider] = useState<"kira" | "haiku" | "naoka">("kira"),
+    [mikazaProvider, setMikazaProvider] = useState<"kira" | "haiku" | "naoka">("haiku"),
     [audioTrack, setAudioTrack] = useState<"sub" | "dub">("sub"),
     [embedError, setEmbedError] = useState(false),
     [metadataLoading, setMetadataLoading] = useState(false),
