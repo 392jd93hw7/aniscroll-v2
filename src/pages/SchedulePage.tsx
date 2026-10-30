@@ -66,8 +66,6 @@ export default function SchedulePage() {
   const dateFormatter = (key: string, options: Intl.DateTimeFormatOptions) =>
     formatInTimeZone(parseLocalDate(key), timeZone, options)
 
-  const weekStart = scheduleDays[0]?.key ? parseLocalDate(scheduleDays[0].key) : new Date()
-  const weekEnd = scheduleDays[6]?.key ? parseLocalDate(scheduleDays[6].key) : new Date()
   const sameMonth = dateFormatter(scheduleDays[0]?.key || "", { month: "short" }) === dateFormatter(scheduleDays[6]?.key || "", { month: "short" })
   const weekRangeLabel = sameMonth
     ? `${dateFormatter(scheduleDays[0]?.key || "", { month: "short" })} ${dateFormatter(scheduleDays[0]?.key || "", { day: "numeric" })} – ${dateFormatter(scheduleDays[6]?.key || "", { day: "numeric" })}, ${dateFormatter(scheduleDays[6]?.key || "", { year: "numeric" })}`
