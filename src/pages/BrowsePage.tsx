@@ -11,7 +11,7 @@ export default function BrowsePage() {
     info, filtered, card, heading, Icon, anime, GENRE_OPTIONS,
   } = useAppPageData() as any
 
-  const isAnimePage = page === "Anime"
+  const isAnimePage = page === "Anime" || page === "Discover"
   const isMoviesPage = page === "Movies"
   const currentPage = isAnimePage ? animePage : moviesPage
   const currentLoading = loading || (isAnimePage && animeLoading) || (isMoviesPage && moviesLoading)
