@@ -243,6 +243,26 @@ function Icon({ name, size = 20 }: IconProps) {
         <path d="M8 5v14M16 5v14" />
       </>
     ),
+    keyboard: (
+      <>
+        <rect x="2.5" y="5" width="19" height="14" rx="2" />
+        <path d="M6 9h.01M9 9h.01M12 9h.01M15 9h.01M18 9h.01M6 12h.01M9 12h.01M12 12h.01M15 12h.01M18 12h.01M8 16h8" />
+      </>
+    ),
+    captions: (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="M7 10h4M7 14h3M14 10h3M14 14h4" />
+      </>
+    ),
+    mic: (
+      <>
+        <rect x="9" y="3" width="6" height="12" rx="3" />
+        <path d="M5 11v1a7 7 0 0 0 14 0v-1M12 19v3M9 22h6" />
+      </>
+    ),
+    list: <path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />,
+    ),
     settings: (
       <>
         <circle cx="12" cy="12" r="3" />
