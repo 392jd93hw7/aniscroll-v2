@@ -11,7 +11,7 @@ export default function BrowsePage() {
     info, filtered, card, heading, Icon, anime, GENRE_OPTIONS,
   } = useAppPageData() as any
 
-  const isAnimePage = page === "Anime"
+  const isAnimePage = page === "Anime" || page === "Discover"
   const isMoviesPage = page === "Movies"
   const currentPage = isAnimePage ? animePage : moviesPage
   const currentLoading = loading || (isAnimePage && animeLoading) || (isMoviesPage && moviesLoading)
@@ -170,17 +170,30 @@ export default function BrowsePage() {
                 {filtered.map(card)}
               </div>
             )}
-            {(page === "Anime" || page === "Movies") && !currentLoading && !currentError && (
-              <div className="movies-pagination" aria-label={page === "Anime" ? "Anime pages" : "Movie pages"}>
-                <button className="button glass" disabled={currentPage <= 1} onClick={() => changePage(-1)}>Previous</button>
-                <span>Page {currentPage} <small>· 30 {page === "Anime" ? "anime" : "movies"} per page</small></span>
-                <button className="button glass" disabled={!hasNextPage} onClick={() => changePage(1)}>Next</button>
-              </div>
+            {(isAnimePage || isMoviesPage) && !currentLoading && !currentError && (
+              <nav className="movies-pagination page-number-pagination" aria-label={isAnimePage ? "Anime pagination" : "Movie pagination"}>
+                <button className="page-nav" aria-label="Previous page" disabled={currentPage <= 1} onClick={() => changePage(-1)}>‹</button>
+                {(() => {
+                  const lastPage = isAnimePage ? Math.max(currentPage, currentPage + (hasNextPage ? 1 : 0)) : Math.max(currentPage, currentPage + (hasNextPage ? 1 : 0))
+                  const pages = new Set<number>([1, lastPage, currentPage - 1, currentPage, currentPage + 1, currentPage + 2])
+                  const visiblePages = [...pages].filter((n) => n >= 1 && n <= lastPage).sort((x, y) => x - y)
+                  const items: Array<number | "ellipsis-left" | "ellipsis-right"> = []
+                  visiblePages.forEach((n, index) => {
+                    if (index > 0 && n - visiblePages[index - 1] > 1) items.push(index === 1 ? "ellipsis-left" : "ellipsis-right")
+                    items.push(n)
+                  })
+                  return items.map((item) => typeof item === "number" ? (
+                    <button key={item} className={`page-number ${item === currentPage ? "active" : ""}`} aria-current={item === currentPage ? "page" : undefined} onClick={() => isAnimePage ? setAnimePage(item) : setMoviesPage(item)}>{item}</button>
+                  ) : <span className="page-ellipsis" key={item}>…</span>)
+                })()}
+                <button className="page-nav" aria-label="Next page" disabled={!hasNextPage} onClick={() => changePage(1)}>›</button>
+                <button className="page-nav page-last-nav" aria-label="Last page" disabled={!hasNextPage} onClick={() => isAnimePage ? setAnimePage(Math.max(1, Math.ceil(totalTitles / 30))) : setMoviesPage((p: number) => p + 1)}>»</button>
+              </nav>
             )}
             {!currentLoading && currentError && (
               <div className="empty-state" role="status">
                 <Icon name="info" size={38} />
-                <h2>{page === "Anime" ? "Anime unavailable" : "Movies unavailable"}</h2>
+                <h2>{isAnimePage ? "Anime unavailable" : "Movies unavailable"}</h2>
                 <p>{currentError}</p>
                 <button className="button purple" onClick={retryPage}>Try again</button>
               </div>

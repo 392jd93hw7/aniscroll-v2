@@ -14,7 +14,7 @@ export default function WatchPage() {
   } = useAppPageData() as any
 
   const [episodeSearch, setEpisodeSearch] = useState("")
-  const [episodeView, setEpisodeView] = useState<"list" | "grid">("list")
+  const episodeView = "list" as const
   const [theaterMode, setTheaterMode] = useState(false)
   const [autoplayStart, setAutoplayStart] = useState(true)
   const [autoSkip, setAutoSkip] = useState(false)
@@ -40,15 +40,15 @@ export default function WatchPage() {
   const heroArtwork = selected.banner || selected.image || ""
   const availableSubServers: string[] = audioAvailability?.languageAvailability?.sub === true && Array.isArray(audioAvailability?.available?.sub) ? audioAvailability.available.sub : []
   const availableDubServers: string[] = audioAvailability?.languageAvailability?.dub === true && Array.isArray(audioAvailability?.available?.dub) ? audioAvailability.available.dub : []
-  const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-3"]?.[audioTrack]) ? audioAvailability.providers["HD-1"][audioTrack] : []
+  const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-3"]?.[audioTrack]) ? audioAvailability.providers["HD-3"][audioTrack] : []
   const mikazaProviderDirectory = [
-    { id: "haiku", label: "Haiku" },
-    { id: "kira", label: "Kira" },
-    { id: "naoka", label: "Naoka" },
+    { id: "haiku", label: "Primary source" },
+    { id: "kira", label: "Backup source 1" },
+    { id: "naoka", label: "Backup source 2" },
   ]
   const mikazaProviders = mikazaProviderDirectory
     .filter((provider) => availableMikazaIds.includes(provider.id))
-    .map((provider, index) => ({ ...provider, kind: index === 0 ? "Available" : "Fallback" }))
+    .map((provider) => ({ ...provider, kind: provider.id === "haiku" ? "Primary" : "Fallback" }))
   const selectServer = (server: string, language: "sub" | "dub") => {
     const providerOptions = audioAvailability?.providers?.[server]?.[language] || []
     if (server === "HD-3" && providerOptions.length) setMikazaProvider(providerOptions[0])
@@ -61,12 +61,12 @@ export default function WatchPage() {
     const nextProvider = mikazaProviders[currentIndex + 1]
     if (!nextProvider) {
       setEmbedError(true)
-      notify("No more Mikaza fallback providers are available.")
+      notify("No more HD-3 fallback sources are available.")
       return
     }
     setEmbedError(false)
     setMikazaProvider(nextProvider.id)
-    notify("Switched HD-3 to Mikaza " + nextProvider.label + ".")
+    notify("Switched to HD-3 " + nextProvider.label.toLowerCase() + ".")
   }
   const handleEmbedError = () => {
     if (streamServer === "HD-3") {
@@ -232,7 +232,7 @@ export default function WatchPage() {
                     </button>
                   ))}
                 </div>
-                <span>Only Mikaza providers that responded for this audio language are listed.</span>
+                <span>Only sources that responded for this audio language are listed.</span>
                 <button className="watch-mikaza-next" onClick={tryNextMikazaProvider} disabled={mikazaProviders.findIndex((provider) => provider.id === mikazaProvider) >= mikazaProviders.length - 1}>Try next fallback ↗</button>
               </div>
             )}
@@ -260,10 +260,7 @@ export default function WatchPage() {
         <aside className="watch-episode-sidebar">
           <div className="watch-sidebar-heading">
             <div><h2>Episodes <span>{episodeCount}</span></h2></div>
-            <div className="watch-view-switch">
-              <button aria-label="Grid view" aria-pressed={episodeView === "grid"} className={episodeView === "grid" ? "active" : ""} onClick={() => setEpisodeView("grid")}><Icon name="grid" size={17} /></button>
-              <button aria-label="List view" aria-pressed={episodeView === "list"} className={episodeView === "list" ? "active" : ""} onClick={() => setEpisodeView("list")}><Icon name="list" size={17} /></button>
-            </div>
+
           </div>
           <div className="watch-sidebar-filters">
             <label>Season
@@ -274,7 +271,7 @@ export default function WatchPage() {
             <div className="watch-episode-search"><Icon name="search" size={16} /><input value={episodeSearch} onChange={(event) => setEpisodeSearch(event.target.value)} placeholder="Search episode number or title" aria-label="Search episodes" /></div>
             <div className="watch-episode-summary"><span>Episodes 1–{episodeCount}</span><span>Available episodes</span></div>
           </div>
-          <div className={`watch-episode-scroll ${episodeView === "grid" ? "is-grid" : ""}`}>
+          <div className="watch-episode-scroll">
             {filteredEpisodeNumbers.map((item: { title: string; number: number }) => {
               const number = item.number
               const watched = history?.[selected.title]?.season === season && history?.[selected.title]?.episode === number
@@ -288,7 +285,7 @@ export default function WatchPage() {
                   onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); goToEpisode(number) }}
                 >
                   <div className="watch-episode-image"><img src={thumbnail} alt="" loading="lazy" /><span><Icon name="play" size={15} /></span></div>
-                  <div className="watch-episode-meta"><span className="watch-episode-eyebrow">EP {String(number).padStart(2, "0")}</span><h3>{item.title}</h3><div className="watch-episode-badges"><span><Icon name="captions" size={11} /> SUB</span><span><Icon name="mic" size={11} /> DUB</span></div></div>
+                  <div className="watch-episode-meta"><span className="watch-episode-eyebrow">{"EP " + String(number).padStart(2, "0")}</span><h3>{item.title}</h3></div>
                   <small>{formatTime(duration)}</small>
                   {watched && <span className="watch-episode-progress">{Math.round(history[selected.title].progress)}% watched</span>}
                 </a>

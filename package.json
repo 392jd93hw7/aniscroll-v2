@@ -9,7 +9,10 @@
     "dev:api": "node --watch server/index.js",
     "build": "vite build",
     "start": "node server/index.js",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "node --test",
+    "check": "npm run typecheck && npm test && npm run build",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.0",

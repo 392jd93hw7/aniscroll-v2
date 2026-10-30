@@ -40,7 +40,7 @@ export default function ProfilePage() {
               {[
                 [
                   String(
-                    Object.values(history).filter((h) => h.progress >= 100)
+                    Object.values(history as Record<string, { progress: number }>).filter((h) => h.progress >= 100)
                       .length,
                   ),
                   "Preview entries finished",
@@ -48,7 +48,7 @@ export default function ProfilePage() {
                 [String(Object.keys(history).length), "Stories in progress"],
                 [
                   formatTime(
-                    Object.entries(history).reduce(
+                    Object.entries(history as Record<string, { progress: number }>).reduce(
                       (total, [title, h]) =>
                         total + (h.progress * runtimeFor(title)) / 100,
                       0,

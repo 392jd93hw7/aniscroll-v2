@@ -12,7 +12,6 @@ import { hasSupabaseConfig, supabase } from "./supabase"
 import { AppPageProvider } from "./context/AppPageContext"
 import HomePage from "./pages/HomePage"
 import DiscoverPage from "./pages/DiscoverPage"
-import AnimePage from "./pages/AnimePage"
 import MoviesPage from "./pages/MoviesPage"
 import AnimeDetailsPage from "./pages/AnimeDetailsPage"
 import WatchPage from "./pages/WatchPage"
@@ -112,11 +111,11 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
 const PAGE_PATHS: Record<string, string> = {
-  Home: "/", Discover: "/discover", Anime: "/anime", Movies: "/movies",
+  Home: "/", Discover: "/discover", Movies: "/movie",
   Schedule: "/schedule", Watchlist: "/watchlist", Profile: "/profile",
   Admin: "/admin", Auth: "/sign-in",
 }
-const PATH_PAGES: Record<string, string> = Object.fromEntries(Object.entries(PAGE_PATHS).map(([page, path]) => [path, page]))
+const PATH_PAGES: Record<string, string> = { ...Object.fromEntries(Object.entries(PAGE_PATHS).map(([page, path]) => [path, page])), "/movies": "Movies" }
 const localDateKey = (date: Date) => date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0")
 const animePath = (title: string) => "/anime/" + slugify(title)
 const watchPath = (title: string, season: number, episode: number) => "/watch/" + slugify(title) + "/season-" + season + "/episode-" + episode
@@ -307,12 +306,7 @@ function App() {
     [loading, setLoading] = useState(false),
     [librarySort, setLibrarySort] = useState("Recently saved"),
     [statuses, setStatuses] = useState<Record<string, LibraryStatus>>(() => readStorage("aniscroll:statuses", {})),
-    [history, setHistory] = useState<Record<string, ViewingProgress>>(() => readStorage("aniscroll:history", {
-      "Jujutsu Kaisen": { episode: 4, season: 1, progress: 66 },
-      "Frieren: Beyond Journey’s End": { episode: 3, season: 1, progress: 42 },
-      "Demon Slayer: Kimetsu no Yaiba": { episode: 4, season: 1, progress: 77 },
-      "SPY × FAMILY": { episode: 6, season: 1, progress: 55 },
-    })),
+    [history, setHistory] = useState<Record<string, ViewingProgress>>(() => readStorage("aniscroll:history", {})),
     [preferences, setPreferences] = useState(() => readStorage("aniscroll:preferences", {
       name: "Kaito",
       audio: "Japanese",
@@ -354,14 +348,14 @@ function App() {
     [homeGenreLoading, setHomeGenreLoading] = useState(false),
     [homeGenreError, setHomeGenreError] = useState(""),
     [animeResults, setAnimeResults] = useState<Anime[]>([]),
-    [animePage, setAnimePage] = useState(1),
+    [animePage, setAnimePage] = useState(() => { const value = Number(new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("page") || 1); return Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1 }),
     [animeHasNextPage, setAnimeHasNextPage] = useState(false),
     [animeTotal, setAnimeTotal] = useState(0),
     [animeLoading, setAnimeLoading] = useState(false),
     [animeError, setAnimeError] = useState(""),
     [animeReloadNonce, setAnimeReloadNonce] = useState(0),
     [movieResults, setMovieResults] = useState<Anime[]>([]),
-    [moviesPage, setMoviesPage] = useState(1),
+    [moviesPage, setMoviesPage] = useState(() => { const value = Number(new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("page") || 1); return Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1 }),
     [moviesHasNextPage, setMoviesHasNextPage] = useState(false),
     [moviesLoading, setMoviesLoading] = useState(false),
     [moviesError, setMoviesError] = useState(""),
@@ -518,7 +512,37 @@ function App() {
     return () => { active = false }
   }, [page])
   useEffect(() => {
-    if (page !== "Anime") return
+    const path = window.location.pathname.replace(/\/+$/, "") || "/"
+    const isDiscover = page === "Discover" && path === "/discover"
+    const isMovies = page === "Movies" && (path === "/movie" || path === "/movies")
+    if (!isDiscover && !isMovies) return
+
+    // Page state is the source of truth after navigation. The initial state
+    // reads ?page= from the URL, and popstate handles browser back/forward.
+    // Do not re-read the URL here, or a click to page 2 gets reset to page 1.
+    const currentPage = isDiscover ? animePage : moviesPage
+    const nextUrl = new URL(window.location.href)
+    if (currentPage <= 1) nextUrl.searchParams.delete("page")
+    else nextUrl.searchParams.set("page", String(currentPage))
+    const next = nextUrl.pathname + nextUrl.search + nextUrl.hash
+    const current = window.location.pathname + window.location.search + window.location.hash
+    if (next !== current) window.history.pushState({ path: nextUrl.pathname }, "", next)
+  }, [page, animePage, moviesPage])
+
+  useEffect(() => {
+    const handlePagePopState = () => {
+      const path = window.location.pathname.replace(/\/+$/, "") || "/"
+      const value = Number(new URLSearchParams(window.location.search).get("page") || 1)
+      const safePage = Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1
+      if (path === "/discover") setAnimePage(safePage)
+      if (path === "/movie" || path === "/movies") setMoviesPage(safePage)
+    }
+    window.addEventListener("popstate", handlePagePopState)
+    return () => window.removeEventListener("popstate", handlePagePopState)
+  }, [])
+
+  useEffect(() => {
+    if (page !== "Anime" && page !== "Discover") return
     let active = true
     setAnimeLoading(true)
     setAnimeError("")
@@ -529,17 +553,40 @@ function App() {
     if (year !== "All years") params.set("year", year)
     if (seasonFilter !== "All seasons") params.set("season", seasonFilter)
     const requestTimer = window.setTimeout(() => {
-      void fetch("/api/catalog/anime?" + params.toString(), { cache: "no-store" })
+      const gqlQuery = "        query DiscoverAnime($page: Int, $perPage: Int, $search: String, $genres: [String], $season: MediaSeason, $seasonYear: Int, $sort: [MediaSort]) {\n          Page(page: $page, perPage: $perPage) {\n            pageInfo { currentPage hasNextPage perPage }\n            media(type: ANIME, search: $search, genre_in: $genres, season: $season, seasonYear: $seasonYear, sort: $sort, isAdult: false) {\n              id idMal\n              title { romaji english native }\n              coverImage { large extraLarge color }\n              bannerImage description(asHtml: false) genres averageScore popularity episodes status season seasonYear format\n              startDate { year month day }\n              studios(isMain: true) { nodes { name } }\n              countryOfOrigin isAdult\n            }\n          }\n        }"
+      const sortMap: Record<string, string[]> = {
+        Popularity: ["POPULARITY_DESC"],
+        "Recently Added": ["ID_DESC"],
+        "Top Rated": ["SCORE_DESC"],
+        Trending: ["TRENDING_DESC"],
+        "Release Date": ["START_DATE_DESC"],
+      }
+      const variables: Record<string, unknown> = {
+        page: animePage,
+        perPage: 30,
+        sort: sortMap[sort] || ["POPULARITY_DESC"],
+      }
+      if (term) variables.search = term
+      if (genre !== "All genres") variables.genres = [genre]
+      if (seasonFilter !== "All seasons") variables.season = seasonFilter.toUpperCase()
+      if (year !== "All years") variables.seasonYear = Number(year)
+      void fetch("https://graphql.anilist.co", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ query: gqlQuery, variables }),
+      })
         .then(async (response) => {
           const payload = await response.json().catch(() => ({}))
-          if (!response.ok) throw new Error(payload.error || "Could not load anime from AniList")
-          return payload
+          if (!response.ok || payload.errors?.length) {
+            throw new Error(payload.errors?.[0]?.message || "Could not load anime from AniList")
+          }
+          return payload.data?.Page
         })
         .then((payload) => {
           if (!active) return
-          setAnimeResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
-          setAnimeHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
-          setAnimeTotal(Number(payload.pageInfo?.total || 0))
+          setAnimeResults(Array.isArray(payload?.media) ? payload.media.map(normalizeAniList) : [])
+          setAnimeHasNextPage(Boolean(payload?.pageInfo?.hasNextPage))
+          setAnimeTotal(0)
         })
         .catch((error) => {
           if (!active) return
@@ -575,8 +622,12 @@ function App() {
         setMovieResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
         setMoviesHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
       })
-      .catch(() => {
-        if (active) { setMovieResults([]); setMoviesHasNextPage(false); setMoviesError(error instanceof Error ? error.message : "Could not load movies from AniList. Please try again.") }
+      .catch((error) => {
+        if (active) {
+          setMovieResults([])
+          setMoviesHasNextPage(false)
+          setMoviesError(error instanceof Error ? error.message : "Could not load movies from AniList. Please try again.")
+        }
       })
       .finally(() => { if (active) setMoviesLoading(false) })
     return () => { active = false }
@@ -650,13 +701,6 @@ function App() {
       const userId = data.session?.user.id || null
       setSessionUserId(userId)
       setSignedIn(Boolean(userId))
-      if (userId) {
-        const { data: rows } = await supabase.from("watchlist").select("anime_title,status").eq("user_id", userId)
-        if (active && rows?.length) {
-          setSaved(rows.map((row) => String(row.anime_title)))
-          setStatuses(Object.fromEntries(rows.map((row) => [String(row.anime_title), row.status as LibraryStatus])))
-        }
-      }
     }
     void startSession()
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -666,6 +710,24 @@ function App() {
     })
     return () => { active = false; subscription.unsubscribe() }
   }, [])
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !sessionUserId) return
+    let active = true
+    void (async () => {
+      const { data: rows, error } = await supabase
+        .from("watchlist")
+        .select("anime_title,status")
+        .eq("user_id", sessionUserId)
+      if (!active || error || !rows) return
+      const cloudTitles = rows.map((row) => String(row.anime_title)).filter(Boolean)
+      setSaved((current) => Array.from(new Set([...current, ...cloudTitles])))
+      setStatuses((current) => ({
+        ...current,
+        ...Object.fromEntries(rows.map((row) => [String(row.anime_title), row.status as LibraryStatus])),
+      }))
+    })()
+    return () => { active = false }
+  }, [hasSupabaseConfig, sessionUserId])
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
       setIsAdmin(false)
@@ -702,6 +764,15 @@ function App() {
   }, [])
   useEffect(() => {
     const path = routePath.replace(/\/+$/, "") || "/"
+    if (path === "/anime") {
+      if (lastAppliedRouteRef.current !== path) {
+        lastAppliedRouteRef.current = path
+        window.history.replaceState({}, "", "/discover")
+        setRoutePath("/discover")
+        setPage("Discover")
+      }
+      return
+    }
     const staticPage = PATH_PAGES[path]
     if (staticPage) {
       if (lastAppliedRouteRef.current !== path) {
@@ -802,9 +873,14 @@ function App() {
         const payload = await fetch("/api/anilist/resolve?title=" + encodeURIComponent(a.title)).then((r) => r.json())
         id = Number(payload.anime?.id || 0)
       }
-      if (!id) return
-      if (remove) await supabase.from("watchlist").delete().eq("user_id", sessionUserId).eq("anilist_id", id)
-      else {
+      if (!id) {
+        notify("Saved locally; this title could not be matched to AniList for cloud sync.")
+        return
+      }
+      if (remove) {
+        const { error } = await supabase.from("watchlist").delete().eq("user_id", sessionUserId).eq("anilist_id", id)
+        if (error) notify("Removed locally; cloud removal could not complete.")
+      } else {
         const { error } = await supabase.from("watchlist").upsert({ user_id: sessionUserId, anilist_id: id, anime_title: a.title, cover_image: a.image, status }, { onConflict: "user_id,anilist_id" })
         if (error) notify("Saved locally; account sync could not complete.")
       }
@@ -860,13 +936,71 @@ function App() {
     return () => clearInterval(id)
   }, [playing, page, speed, selected.title])
   useEffect(() => {
-    if (page === "Player") {
+    // Only mark an anime as continue-watching after playback has actually started
+    // and progress has advanced. Merely opening the player must not create history.
+    if (page === "Player" && playing && progress > 0) {
       setHistory((h) => ({
         ...h,
-        [selected.title]: { episode, season, progress },
+        [selected.title]: {
+          episode,
+          season,
+          progress,
+          lastWatchedAt: new Date().toISOString(),
+        },
       }))
     }
-  }, [page, selected.title, episode, season, progress])
+  }, [page, playing, selected.title, episode, season, progress])
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !sessionUserId || !selected.id) return
+    let active = true
+    const loadCloudProgress = async () => {
+      const { data, error } = await supabase
+        .from("watch_progress")
+        .select("season_number,episode_number,progress_percent,updated_at")
+        .eq("user_id", sessionUserId)
+        .eq("anilist_id", Number(selected.id))
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (!active || error || !data) return
+      const cloudProgress = {
+        season: Number(data.season_number) || 1,
+        episode: Number(data.episode_number) || 1,
+        progress: Math.max(0, Math.min(100, Number(data.progress_percent) || 0)),
+      }
+      setHistory((current) => {
+        const local = current[selected.title]
+        if (local) {
+          const localPosition = local.season * 10000 + local.episode
+          const cloudPosition = cloudProgress.season * 10000 + cloudProgress.episode
+          if (localPosition > cloudPosition) return current
+          if (localPosition === cloudPosition) {
+            return { ...current, [selected.title]: { ...cloudProgress, progress: Math.max(local.progress, cloudProgress.progress) } }
+          }
+        }
+        return { ...current, [selected.title]: cloudProgress }
+      })
+    }
+    void loadCloudProgress()
+    return () => { active = false }
+  }, [hasSupabaseConfig, sessionUserId, selected.id, selected.title])
+
+  useEffect(() => {
+    if (page !== "Player" || !hasSupabaseConfig || !supabase || !sessionUserId || !selected.id) return
+    const current = history[selected.title]
+    if (!current) return
+    const timer = window.setTimeout(() => {
+      void supabase.from("watch_progress").upsert({
+        user_id: sessionUserId,
+        anilist_id: Number(selected.id),
+        season_number: Math.max(1, Number(current.season) || 1),
+        episode_number: Math.max(1, Number(current.episode) || 1),
+        progress_percent: Math.max(0, Math.min(100, Number(current.progress) || 0)),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,anilist_id,season_number" })
+    }, 800)
+    return () => window.clearTimeout(timer)
+  }, [hasSupabaseConfig, sessionUserId, selected.id, selected.title, history])
   useEffect(() => {
     if (!playing || playerSettings || !controlsVisible) return
     const id = window.setTimeout(() => setControlsVisible(false), 3500)
@@ -949,14 +1083,21 @@ function App() {
     seasons: 1,
     episodes: ["Episode 1"],
   }
-  const rawEpisodeTitles: string[] = kitsuEpisodes.length
-    ? kitsuEpisodes.map((ep) => String(ep.title || ("Episode " + ep.number)))
-    : info.episodes
   const anilistStatus = String(aniListMeta?.status || "")
   const nextAiringEpisodeNumber = Number(aniListMeta?.nextAiringEpisode?.episode || 0)
   const nextAiringAt = Number(aniListMeta?.nextAiringEpisode?.airingAt || 0)
   const hasFutureAniListAiring = nextAiringEpisodeNumber > 0 && nextAiringAt * 1000 > Date.now()
   const announcedEpisodeCount = Number(aniListMeta?.episodes || 0)
+  const rawEpisodeTitles: string[] = kitsuEpisodes.length
+    ? kitsuEpisodes.map((ep, index) => String(ep.title || ("Episode " + (Number(ep.number) || index + 1))))
+    : [...info.episodes]
+  // Kitsu may return only a partial title list. AniList's episode count is the
+  // fallback source so the UI can still navigate past that partial list.
+  if (announcedEpisodeCount > rawEpisodeTitles.length && !isFilm(selected.title)) {
+    for (let number = rawEpisodeTitles.length + 1; number <= announcedEpisodeCount; number += 1) {
+      rawEpisodeTitles.push("Episode " + number)
+    }
+  }
   const datedKitsuEpisodes = kitsuEpisodes.filter((ep) =>
     ep.airdate && Number.isFinite(Date.parse(String(ep.airdate))),
   )
@@ -988,8 +1129,11 @@ function App() {
   } else if (anilistStatus === "RELEASING" && datedKitsuEpisodes.length) {
     availableEpisodeLimit = airedKitsuEpisodeLimit
   } else if (anilistStatus === "RELEASING") {
-    // With no reliable schedule dates, do not expose the full announced count.
-    availableEpisodeLimit = Math.max(1, Math.min(rawEpisodeTitles.length, Number(history[selected.title]?.episode || 1)))
+    // If neither source provides dates, use AniList's known episode count when available.
+    // Otherwise retain the best-known Kitsu list/history limit.
+    availableEpisodeLimit = announcedEpisodeCount > 0
+      ? Math.min(rawEpisodeTitles.length, announcedEpisodeCount)
+      : Math.max(1, Math.min(rawEpisodeTitles.length, Number(history[selected.title]?.episode || rawEpisodeTitles.length)))
   }
   const episodeTitles = rawEpisodeTitles.slice(0, Math.max(0, Math.min(rawEpisodeTitles.length, availableEpisodeLimit)))
   const duration = runtimeFor(selected.title)
@@ -1079,8 +1223,9 @@ function App() {
       )
     }
   }
-  const isServerPagedBrowse = page === "Anime" || page === "Movies"
-  const filtered = (page === "Movies" ? movieResults : page === "Anime" ? animeResults : catalog)
+  // Discover and Movies render the results fetched for the current server/API page.
+  const isServerPagedBrowse = page === "Discover" || page === "Anime" || page === "Movies"
+  const filtered = (page === "Movies" ? movieResults : page === "Anime" || page === "Discover" ? animeResults : catalog)
     .filter(
       (a) =>
         (isServerPagedBrowse || a.title.toLowerCase().includes(query.toLowerCase())) &&
@@ -1627,7 +1772,7 @@ function App() {
           <Logo />
         </button>
         <nav aria-label="Main navigation">
-          {["Home", "Discover", "Anime", "Movies", "Genres", "Schedule"].map(
+          {["Home", "Discover", "Movies", "Genres", "Schedule"].map(
             (n) => (
               <button
                 key={n}
@@ -1728,7 +1873,6 @@ function App() {
       <main id="main-content" tabIndex={-1}>
         {page === "Home" && <HomePage />}
         {page === "Discover" && <DiscoverPage />}
-        {page === "Anime" && <AnimePage />}
         {page === "Movies" && <MoviesPage />}
         {page === "Details" && <AnimeDetailsPage />}
         {page === "Player" && <WatchPage />}

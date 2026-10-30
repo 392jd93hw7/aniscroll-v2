@@ -127,7 +127,7 @@ export default function AuthPage() {
                 </p>
               )}
               <small>
-                UI prototype · No account data is stored or submitted.
+                {hasSupabaseConfig ? "Account services are provided securely through Supabase." : "Preview mode · Configure Supabase to enable account services."}
               </small>
             </form>
           </div>

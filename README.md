@@ -18,7 +18,7 @@ Vite runs at http://localhost:5173 and proxies `/api` requests to Express on por
 
 The watch page requests `/api/playback/availability/:anilistId/:episode` and reads explicit per-episode `sub` and `dub` booleans from Aniweeb's `/episodes/:anilistId` response. It does not make server-side HTTP requests to the iframe providers to determine language or server availability, because providers may block backend probes while still accepting browser embeds. A confirmed audio track exposes the configured server options. Results are cached for five minutes under a versioned key.
 
-Availability is determined by an HTTP response from each embed page plus basic unavailable-page markers. This is a provider reachability check, not a guarantee that the video will finish playing; a provider may still fail later inside its iframe. If an upstream anti-bot rule blocks server-side requests or the provider always returns a generic player page for missing tracks, the probe can be inconclusive and should be adjusted to the provider's documented availability API.
+The API reports the language flags returned by Aniweeb. This confirms the provider's episode metadata, not successful playback; a stream may still fail later inside its iframe. The player reports iframe load errors where the browser can detect them and offers server/provider fallbacks.
 ## HD-3 Mikaza embed provider
 
 HD-3 uses Mikaza's AniList iframe route. The selected provider is `haiku` by default, with `kira` as the first fallback and `naoka` as the second fallback. URLs are formed as `https://mikaza.buzz/embed/{provider}/ani/{anilist_id}/{episode}/{lang}`, where `provider` is `kira`, `haiku`, or `naoka`, and `lang` is `sub` or `dub`. The watch page exposes all three provider choices while HD-3 is selected and advances to the next fallback when the iframe reports an error. HD-1 now uses the former HD-3 AniPlayer integration. HD-2 retains AniEmbed.
@@ -78,11 +78,15 @@ Anime detail pages fetch character profiles (including character images, roles, 
   - HD-1: `https://aniplayer.xyz/embeds/{aniListId}/{episode}/{sub|dub}`
   - HD-2: `https://aniembed.se/e/{aniListId}/{episode}?lang={sub|dub}`
   - HD-3: `https://mikaza.buzz/embed/{provider}/ani/{aniListId}/{episode}/{sub|dub}`
-- Embedded players use a restrictive sandbox without popup or top-level-navigation permissions. It cannot guarantee ads inside the provider's frame will disappear or that every provider supports the sandbox restrictions.
+- Provider identifiers remain internal to the implementation; the watch UI labels the servers HD-1, HD-2, and HD-3, with generic primary/backup labels for HD-3 fallbacks. Embedded playback is third-party content: the app cannot guarantee availability, remove provider-side ads, or control provider-side tracking.
 
 ## Accounts and storage
 
-Watchlists, viewing progress, and preferences persist in browser storage. For real email/password authentication and cloud watchlists, create a Supabase project, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`, and run `supabase/schema.sql` in the SQL editor. Guest browsing remains available without Supabase. Never expose a service-role key via frontend variables.
+Guest watchlists, viewing progress, and preferences persist in browser storage. When Supabase is configured, authenticated watchlists and viewing progress are also synced to the cloud. To enable real email/password accounts and cloud sync, create a Supabase project, set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env`, and run `supabase/schema.sql` in the SQL editor. Guest browsing remains available without Supabase. Never expose a service-role key via frontend variables.
+
+## Production verification and API protection
+
+Run `npm run check` to execute TypeScript validation, the Node.js security tests, and the Vite production build. GitHub Actions runs the same checks on pull requests to `main` and pushes to `main`. Express adds common security headers and a process-local limit of 180 API requests per IP per minute; the limiter is intentionally dependency-free and resets on restart, so use an edge/WAF or shared rate-limit store for multi-instance deployments. If Express sits behind exactly one trusted reverse proxy, set `TRUST_PROXY=1`; leave it disabled otherwise. Set `NODE_ENV=production` and `PUBLIC_SITE_URL` in production, serve the app over HTTPS, and configure Supabase Auth redirect URLs for your actual domain.
 
 ## Operational notes
 

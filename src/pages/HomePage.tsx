@@ -55,7 +55,13 @@ export default function HomePage() {
       <section
         className={`hero home-trending-hero ${hasTrending ? "" : "is-empty"}`}
         style={hasTrending ? {
+          // Prefer the Kitsu banner prepared in App.tsx; contain keeps the entire
+          // landscape artwork visible instead of cropping it to fill the hero.
           backgroundImage: `url("${homeHeroBanner || featured.banner || featured.image}")`,
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat",
+          backgroundColor: "#09090b",
         } : undefined}
       >
         <div className="hero-shade" />
@@ -151,7 +157,7 @@ export default function HomePage() {
           )}
           <div className="continue-row">
             {anime
-              .filter((item: any) => history?.[item.title])
+              .filter((item: any) => Boolean(history?.[item.title]?.lastWatchedAt) && Number(history[item.title].progress) > 0 && Number(history[item.title].progress) < 100)
               .slice(0, 4)
               .map((a: any) => (
                 <article className="continue-card" key={a.title}>

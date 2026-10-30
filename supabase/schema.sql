@@ -107,7 +107,7 @@ for delete using (
 );
 
 -- Users may change their display name, never their own admin role.
-revoke update on public.profiles from authenticated;
+revoke insert, update, delete on public.profiles from anon, authenticated;
 grant update (display_name, updated_at) on public.profiles to authenticated;
 grant select on public.profiles, public.anime_overrides to anon, authenticated;
 grant select, insert, update, delete on public.watchlist, public.watch_progress to authenticated;

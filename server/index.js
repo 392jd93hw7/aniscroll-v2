@@ -1,10 +1,23 @@
 import express from "express"
+import { createRateLimiter } from "./security.js"
 import path from "node:path"
 import { readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 
 const app = express()
 app.disable("x-powered-by")
+app.use((req, res, next) => {
+  res.set("X-Content-Type-Options", "nosniff")
+  res.set("X-Frame-Options", "DENY")
+  res.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  res.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+  res.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+  if (req.secure) res.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+  next()
+})
+// In-memory IP limit protects the upstream metadata and playback APIs from bursts.
+// Keep proxy trust disabled unless deployment explicitly configures a trusted proxy.
+app.use("/api", createRateLimiter({ windowMs: 60_000, max: 180 }))
 app.use(express.json({ limit: "16kb" }))
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -25,6 +38,9 @@ try {
 } catch {
   // Production environments may inject variables directly instead.
 }
+
+// Apply proxy trust only after optional .env loading; set this only behind one trusted proxy.
+if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1)
 
 const PORT = Number(process.env.PORT || 3001)
 const ANILIST_URL = "https://graphql.anilist.co"
@@ -282,7 +298,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     service: "aniscroll-api",
-    version: "anime-directory-v2+playback-availability-v5",
+    version: "anime-directory-v2+playback-availability-v6+api-hardening",
     animeDirectoryEndpoint: "/api/catalog/anime",
     playbackAvailabilityRoute: true,
   })
@@ -525,18 +541,73 @@ app.get("/api/catalog/anime", async (req, res) => {
           }
         }
       }`
-      const data = await queryAniList(query, variables)
-      return {
-        results: data.Page.media || [],
-        pageInfo: data.Page.pageInfo || { currentPage: page, hasNextPage: false, total: 0, perPage },
+      try {
+        const data = await queryAniList(query, variables)
+        return {
+          results: data.Page.media || [],
+          pageInfo: data.Page.pageInfo || { currentPage: page, hasNextPage: false, total: 0, perPage },
+        }
+      } catch (primaryError) {
+        // AniList occasionally rejects fields during schema changes. Retry once with a
+        // smaller, stable field selection, but do not hammer the API when rate-limited.
+        if ([429, 403].includes(Number(primaryError?.statusCode))) throw primaryError
+        const fallbackFields = `
+          id
+          idMal
+          isAdult
+          title { romaji english native }
+          description(asHtml: false)
+          coverImage { extraLarge large }
+          bannerImage
+          genres
+          tags { name }
+          season
+          seasonYear
+          startDate { year }
+          averageScore
+          popularity
+          status
+          episodes
+          format
+        `
+        const fallbackQuery = `query($page: Int!, $perPage: Int!, $search: String, $genres: [String], $tags: [String], $season: MediaSeason, $seasonYear: Int, $sort: [MediaSort]) {
+          Page(page: $page, perPage: $perPage) {
+            pageInfo { currentPage hasNextPage total perPage }
+            media(type: ANIME, search: $search, genre_in: $genres, tag_in: $tags, season: $season, seasonYear: $seasonYear, sort: $sort, isAdult: false) {
+              ${fallbackFields}
+            }
+          }
+        }`
+        const data = await queryAniList(fallbackQuery, variables)
+        return {
+          results: data.Page.media || [],
+          pageInfo: data.Page.pageInfo || { currentPage: page, hasNextPage: false, total: 0, perPage },
+        }
       }
     }, 90 * 1000)
     res.set("Cache-Control", "private, max-age=60")
     res.json({ ...result, page, perPage, source: "AniList", filters: { search, genre, year: yearValue, season, sort } })
   } catch (error) {
-    console.error("AniList anime page request failed:", error?.message || error)
-    const status = Number(error?.statusCode) === 429 ? 429 : 502
-    res.status(status).json({ error: "Could not load anime from AniList. Please try again." })
+    const upstreamStatus = Number(error?.statusCode || 0)
+    const retryAfterSeconds = Math.max(0, Number(error?.retryAfterSeconds || 0))
+    console.error("AniList anime page request failed:", {
+      message: error?.message || String(error),
+      statusCode: upstreamStatus || null,
+      retryAfterSeconds: retryAfterSeconds || null,
+    })
+    if (upstreamStatus === 429) {
+      const retrySeconds = retryAfterSeconds || 60
+      res.set("Retry-After", String(retrySeconds))
+      return res.status(503).json({ error: `AniList is temporarily rate-limiting requests. Try again in about ${retrySeconds} seconds.`, retryAfterSeconds: retrySeconds })
+    }
+    if (upstreamStatus === 403) {
+      return res.status(503).json({ error: "AniList temporarily refused the request. Please try again shortly." })
+    }
+    if (upstreamStatus === 400) {
+      return res.status(502).json({ error: "AniList rejected the catalog query. The API schema or filters may have changed." })
+    }
+    res.set("Retry-After", "15")
+    res.status(502).json({ error: "AniList catalog is temporarily unavailable. Please retry in a few seconds." })
   }
 })
 
@@ -741,13 +812,33 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
       episodesUrl.searchParams.set("filter[mediaType]", "Anime")
       episodesUrl.searchParams.set("filter[mediaId]", String(record.id))
       episodesUrl.searchParams.set("page[limit]", "20")
-      episodesUrl.searchParams.set("page[offset]", "0")
       episodesUrl.searchParams.set("sort", "number")
       try {
-        const payload = await getJson(episodesUrl.toString())
-        return { anime, episodes: (payload.data || []).map((ep) => normalizeKitsuEpisode(ep, anime.poster || anime.banner)) }
-      } catch { return { anime, episodes: [] } }
-    }, 30 * 60 * 1000)
+        // Walk offsets explicitly instead of relying on Kitsu's optional next link.
+        // Some responses omit links.next even when another page exists.
+        const allEpisodes = []
+        const seenIds = new Set()
+        for (let offset = 0; offset < 2000; offset += 20) {
+          const pageUrl = new URL(episodesUrl)
+          pageUrl.searchParams.set("page[offset]", String(offset))
+          const payload = await getJson(pageUrl.toString())
+          const page = Array.isArray(payload.data) ? payload.data : []
+          if (!page.length) break
+          for (const ep of page) {
+            const id = String(ep.id || "")
+            if (id && !seenIds.has(id)) {
+              seenIds.add(id)
+              allEpisodes.push(ep)
+            }
+          }
+          if (page.length < 20) break
+        }
+        allEpisodes.sort((a, b) => {
+          const an = Number(a.attributes?.number ?? a.attributes?.relativeNumber ?? 0)
+          const bn = Number(b.attributes?.number ?? b.attributes?.relativeNumber ?? 0)
+          return an - bn
+        })
+        return { anime, episodes: allEpisodes.map((ep) => normalizeKitsuEpisode(ep, anime.poster || anime.banner)) }    }, 30 * 60 * 1000)
     res.json(result)
   } catch {
     res.json({ anime: null, episodes: [], warning: "Kitsu metadata is temporarily unavailable" })
@@ -843,13 +934,18 @@ app.get(["/profile", "/watchlist", "/admin", "/sign-in"], async (req, res, next)
   }
 })
 
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "API endpoint not found" })
+})
+
 app.use(express.static(DIST))
 app.use((req, res, next) => {
   if (req.method !== "GET" || req.path.startsWith("/api/")) return next()
   res.sendFile(path.join(DIST, "index.html"), (error) => { if (error) next(error) })
 })
 app.use((error, _req, res, _next) => {
-  console.error(error)
+  console.error("Unhandled server error:", error?.message || "unknown error")
+  if (res.headersSent) return
   res.status(500).json({ error: "Unexpected server error" })
 })
 app.listen(PORT, () => console.log("Aniscroll server listening on port " + PORT))
