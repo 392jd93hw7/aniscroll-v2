@@ -10,7 +10,7 @@ export default function WatchPage() {
     setStreamServer, embedError, setEmbedError, metadataLoading, notify, detail,
     info, duration, episodeCount, episodeTitles, kitsuEpisodes, history, saved, toggle,
     embedUrl, nextEpisode, watch, aniListMeta, aniListDetails, anime, isFilm,
-    formatTime, Icon, Logo
+    formatTime, Icon, Logo, watchPath
   } = useAppPageData() as any
 
   const [episodeSearch, setEpisodeSearch] = useState("")
@@ -20,7 +20,7 @@ export default function WatchPage() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [readMore, setReadMore] = useState(false)
 
-  const currentHistory = history?.[selected.title]
+  const currentHistory = history?.[selected.title]?.season === season && history?.[selected.title]?.episode === episode ? history[selected.title] : null
   const seasons = Math.max(1, Number(info?.seasons || 1))
   const filteredEpisodeNumbers = useMemo(
     () => (episodeTitles || []).map((title: string, index: number) => ({ title, number: index + 1 }))
@@ -193,7 +193,7 @@ export default function WatchPage() {
           </div>
           <div className="watch-sidebar-filters">
             <label>Season
-              <select value={season} onChange={(event) => { setSeason(Number(event.target.value)); setProgress(0); goToEpisode(1) }}>
+              <select value={season} onChange={(event) => { if (typeof watch === "function") watch(selected, 1, Number(event.target.value)); }}>
                 {Array.from({ length: seasons }, (_, index) => <option key={index + 1} value={index + 1}>Season {index + 1}</option>)}
               </select>
             </label>
@@ -209,7 +209,7 @@ export default function WatchPage() {
               return (
                 <a
                   key={number}
-                  href={"/watch/" + selected.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") + "/season-" + season + "/episode-" + number}
+                  href={watchPath(selected.title, season, number)}
                   className={`watch-episode-card ${isCurrent ? "is-current" : ""} ${watched ? "is-watched" : ""}`}
                   onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); goToEpisode(number) }}
                 >
