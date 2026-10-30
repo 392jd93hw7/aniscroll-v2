@@ -1,17 +1,18 @@
-name: Build
+name: Build and Test
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 jobs:
-  build:
+  verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
-      - run: npx tsc --noEmit
-      - run: npm run build
+          cache: npm
+      - run: npm install --no-audit --no-fund
+      - run: npm run check
