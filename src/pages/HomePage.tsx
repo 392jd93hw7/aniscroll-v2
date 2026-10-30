@@ -253,7 +253,7 @@ export default function HomePage() {
 
         <section>
           {heading("Find your kind of adventure")}
-          <div className="genre-grid">
+          <div className="genre-grid" aria-busy={homeGenreLoading}>
             {FEATURED_GENRES.map((genre: string) => {
               const animeForGenre = genreBannerMap.get(genre)
               const banner = animeForGenre?.banner || animeForGenre?.image || null
@@ -282,6 +282,7 @@ export default function HomePage() {
               )
             })}
           </div>
+          {homeGenreError && <p className="muted genre-feed-error">{homeGenreError}</p>}
         </section>
 
         <section>
