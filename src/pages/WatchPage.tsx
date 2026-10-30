@@ -48,7 +48,7 @@ export default function WatchPage() {
   ]
   const mikazaProviders = mikazaProviderDirectory
     .filter((provider) => availableMikazaIds.includes(provider.id))
-    .map((provider, index) => ({ ...provider, kind: index === 0 ? "Available" : "Fallback" }))
+    .map((provider) => ({ ...provider, kind: provider.id === "haiku" ? "Primary" : "Fallback" }))
   const selectServer = (server: string, language: "sub" | "dub") => {
     const providerOptions = audioAvailability?.providers?.[server]?.[language] || []
     if (server === "HD-3" && providerOptions.length) setMikazaProvider(providerOptions[0])
@@ -61,7 +61,7 @@ export default function WatchPage() {
     const nextProvider = mikazaProviders[currentIndex + 1]
     if (!nextProvider) {
       setEmbedError(true)
-      notify("No more Mikaza fallback providers are available.")
+      notify("No more HD-3 fallback sources are available.")
       return
     }
     setEmbedError(false)
@@ -232,7 +232,7 @@ export default function WatchPage() {
                     </button>
                   ))}
                 </div>
-                <span>Only Mikaza providers that responded for this audio language are listed.</span>
+                <span>Only sources that responded for this audio language are listed.</span>
                 <button className="watch-mikaza-next" onClick={tryNextMikazaProvider} disabled={mikazaProviders.findIndex((provider) => provider.id === mikazaProvider) >= mikazaProviders.length - 1}>Try next fallback ↗</button>
               </div>
             )}
