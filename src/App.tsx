@@ -517,15 +517,10 @@ function App() {
     const isMovies = page === "Movies" && (path === "/movie" || path === "/movies")
     if (!isDiscover && !isMovies) return
 
+    // Page state is the source of truth after navigation. The initial state
+    // reads ?page= from the URL, and popstate handles browser back/forward.
+    // Do not re-read the URL here, or a click to page 2 gets reset to page 1.
     const currentPage = isDiscover ? animePage : moviesPage
-    const params = new URLSearchParams(window.location.search)
-    const urlPage = Number(params.get("page") || 1)
-    if (Number.isSafeInteger(urlPage) && urlPage > 0 && urlPage !== currentPage) {
-      if (isDiscover) setAnimePage(Math.min(urlPage, 1000))
-      else setMoviesPage(Math.min(urlPage, 1000))
-      return
-    }
-
     const nextUrl = new URL(window.location.href)
     if (currentPage <= 1) nextUrl.searchParams.delete("page")
     else nextUrl.searchParams.set("page", String(currentPage))
