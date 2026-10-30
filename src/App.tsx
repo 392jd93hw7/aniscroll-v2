@@ -528,26 +528,32 @@ function App() {
     if (genre !== "All genres") params.set("genre", genre)
     if (year !== "All years") params.set("year", year)
     if (seasonFilter !== "All seasons") params.set("season", seasonFilter)
-    void fetch("/api/anilist/anime?" + params.toString(), { cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => ({}))
-        if (!response.ok) throw new Error(payload.error || "Could not load anime from AniList")
-        return payload
-      })
-      .then((payload) => {
-        if (!active) return
-        setAnimeResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
-        setAnimeHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
-        setAnimeTotal(Number(payload.pageInfo?.total || 0))
-      })
-      .catch((error) => {
-        if (!active) return
-        setAnimeResults([])
-        setAnimeHasNextPage(false)
-        setAnimeError(error instanceof Error ? error.message : "Could not load anime from AniList. Please try again.")
-      })
-      .finally(() => { if (active) setAnimeLoading(false) })
-    return () => { active = false }
+    const requestTimer = window.setTimeout(() => {
+      void fetch("/api/anilist/anime?" + params.toString(), { cache: "no-store" })
+        .then(async (response) => {
+          const payload = await response.json().catch(() => ({}))
+          if (!response.ok) throw new Error(payload.error || "Could not load anime from AniList")
+          return payload
+        })
+        .then((payload) => {
+          if (!active) return
+          setAnimeResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
+          setAnimeHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
+          setAnimeTotal(Number(payload.pageInfo?.total || 0))
+        })
+        .catch((error) => {
+          if (!active) return
+          setAnimeResults([])
+          setAnimeHasNextPage(false)
+          setAnimeTotal(0)
+          setAnimeError(error instanceof Error ? error.message : "Could not load anime from AniList. Please try again.")
+        })
+        .finally(() => { if (active) setAnimeLoading(false) })
+    }, term ? 280 : 0)
+    return () => {
+      active = false
+      window.clearTimeout(requestTimer)
+    }
   }, [page, query, genre, year, seasonFilter, sort, animePage, animeReloadNonce])
 
   useEffect(() => {
