@@ -384,6 +384,7 @@ function App() {
   const [scheduleLoading, setScheduleLoading] = useState(false)
   const [scheduleError, setScheduleError] = useState("")
   const [scheduleDate, setScheduleDate] = useState(() => localDateKey(new Date()))
+  const [scheduleWeekOffset, setScheduleWeekOffset] = useState(0)
   const notify = (text: string) => {
     setToast(text)
     window.setTimeout(() => setToast(""), 3200)
@@ -539,12 +540,14 @@ function App() {
     let active = true
     setScheduleLoading(true)
     setScheduleError("")
-    const from = Math.floor(Date.now() / 1000)
-    const rangeEnd = new Date()
+    const rangeStart = new Date()
+    rangeStart.setHours(0, 0, 0, 0)
+    rangeStart.setDate(rangeStart.getDate() - ((rangeStart.getDay() + 6) % 7) + scheduleWeekOffset * 7)
+    const rangeEnd = new Date(rangeStart)
     rangeEnd.setDate(rangeEnd.getDate() + 7)
-    rangeEnd.setHours(0, 0, 0, 0)
+    const from = Math.floor(rangeStart.getTime() / 1000)
     const to = Math.floor(rangeEnd.getTime() / 1000)
-    void fetch("/api/anilist/schedule?from=" + from + "&to=" + to)
+    void fetch("/api/anilist/schedule?from=" + from + "&to=" + to, { cache: "no-store" })
       .then((response) => {
         if (!response.ok) throw new Error("AniList schedule is unavailable")
         return response.json()
@@ -557,7 +560,7 @@ function App() {
       })
       .finally(() => { if (active) setScheduleLoading(false) })
     return () => { active = false }
-  }, [page])
+  }, [page, scheduleWeekOffset])
   useEffect(() => {
     if (page !== "Details" && page !== "Player") return
     const requestKey = String(selected.id || "") + ":" + selected.title
@@ -976,17 +979,24 @@ function App() {
     .filter((item: any) => item?.type === "ANIME" && item.id !== aniListDetails?.id)
     .map((item: any) => normalizeAniList(item))
 
+  const scheduleWeekStart = new Date()
+  scheduleWeekStart.setHours(0, 0, 0, 0)
+  scheduleWeekStart.setDate(scheduleWeekStart.getDate() - ((scheduleWeekStart.getDay() + 6) % 7) + scheduleWeekOffset * 7)
   const scheduleDays = Array.from({ length: 7 }, (_, offset) => {
-    const date = new Date()
-    date.setHours(0, 0, 0, 0)
-    date.setDate(date.getDate() + offset)
+    const date = new Date(scheduleWeekStart)
+    date.setDate(scheduleWeekStart.getDate() + offset)
+    const todayKey = localDateKey(new Date())
     return {
       key: localDateKey(date),
-      label: offset === 0 ? "Today" : offset === 1 ? "Tomorrow" : date.toLocaleDateString(undefined, { weekday: "long" }),
+      label: date.toLocaleDateString(undefined, { weekday: "long" }),
+      shortLabel: date.toLocaleDateString(undefined, { weekday: "short" }),
+      dateNumber: date.getDate(),
+      monthLabel: date.toLocaleDateString(undefined, { month: "short" }).toUpperCase(),
       dateLabel: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+      isToday: localDateKey(date) === todayKey,
     }
   })
-  const selectedScheduleDay = scheduleDays.find((day) => day.key === scheduleDate) || scheduleDays[0]
+  const selectedScheduleDay = scheduleDays.find((day) => day.key === scheduleDate) || scheduleDays[Math.min(6, Math.max(0, new Date().getDay() === 0 ? 6 : new Date().getDay() - 1))] || scheduleDays[0]
   const releasesForSelectedDay = airingSchedule
     .filter((release) => localDateKey(new Date(release.airingAt * 1000)) === scheduleDate)
     .sort((a, b) => a.airingAt - b.airingAt)
@@ -1470,6 +1480,8 @@ function App() {
     setScheduleError,
     scheduleDate,
     setScheduleDate,
+    scheduleWeekOffset,
+    setScheduleWeekOffset,
     lastAppliedRouteRef,
     resolvedRouteRef,
     metadataRequestRef,
