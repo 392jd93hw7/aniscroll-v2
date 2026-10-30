@@ -307,12 +307,7 @@ function App() {
     [loading, setLoading] = useState(false),
     [librarySort, setLibrarySort] = useState("Recently saved"),
     [statuses, setStatuses] = useState<Record<string, LibraryStatus>>(() => readStorage("aniscroll:statuses", {})),
-    [history, setHistory] = useState<Record<string, ViewingProgress>>(() => readStorage("aniscroll:history", {
-      "Jujutsu Kaisen": { episode: 4, season: 1, progress: 66 },
-      "Frieren: Beyond Journey’s End": { episode: 3, season: 1, progress: 42 },
-      "Demon Slayer: Kimetsu no Yaiba": { episode: 4, season: 1, progress: 77 },
-      "SPY × FAMILY": { episode: 6, season: 1, progress: 55 },
-    })),
+    [history, setHistory] = useState<Record<string, ViewingProgress>>(() => readStorage("aniscroll:history", {})),
     [preferences, setPreferences] = useState(() => readStorage("aniscroll:preferences", {
       name: "Kaito",
       audio: "Japanese",
