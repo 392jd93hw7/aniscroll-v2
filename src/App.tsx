@@ -936,13 +936,20 @@ function App() {
     return () => clearInterval(id)
   }, [playing, page, speed, selected.title])
   useEffect(() => {
-    if (page === "Player") {
+    // Only mark an anime as continue-watching after playback has actually started
+    // and progress has advanced. Merely opening the player must not create history.
+    if (page === "Player" && playing && progress > 0) {
       setHistory((h) => ({
         ...h,
-        [selected.title]: { episode, season, progress },
+        [selected.title]: {
+          episode,
+          season,
+          progress,
+          lastWatchedAt: new Date().toISOString(),
+        },
       }))
     }
-  }, [page, selected.title, episode, season, progress])
+  }, [page, playing, selected.title, episode, season, progress])
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase || !sessionUserId || !selected.id) return
     let active = true
