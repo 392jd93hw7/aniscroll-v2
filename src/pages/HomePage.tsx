@@ -56,12 +56,7 @@ export default function HomePage() {
               {featured.synopsis || "Discover one of the anime trending with the AniList community right now."}
             </p>
             <div className="genres-line">
-              {genres.map((genre: string, index: number) => (
-                <span key={genre}>
-                  {index > 0 && <i>•</i>}
-                  {genre}
-                </span>
-              ))}
+              {genres.join("  •  ")}
             </div>
             <div className="hero-actions">
               <button className="button white" onClick={() => watch(featured)}>
