@@ -277,7 +277,16 @@ app.get("/watch/:slug/season-:season/episode-:episode", (req, res, next) => {
   void sendAnimeSeoIndex(req, res, next, req.params.slug, "watch", season, episode)
 })
 
-app.get("/api/health", (_req, res) => res.json({ ok: true, service: "aniscroll-api" }))
+app.get("/api/health", (_req, res) => {
+  res.set("Cache-Control", "no-store")
+  res.json({
+    ok: true,
+    service: "aniscroll-api",
+    version: "anime-directory-v2+playback-availability-v5",
+    animeDirectoryEndpoint: "/api/catalog/anime",
+    playbackAvailabilityRoute: true,
+  })
+})
 
 app.get("/api/anilist/schedule", async (req, res) => {
   const now = Math.floor(Date.now() / 1000)
@@ -474,7 +483,7 @@ app.get("/api/anilist/trending", async (_req, res) => {
   }
 })
 
-app.get("/api/anilist/anime", async (req, res) => {
+app.get("/api/catalog/anime", async (req, res) => {
   const page = Number(req.query.page ?? 1)
   const perPage = 30
   const search = String(req.query.q || "").trim().slice(0, 100) || null
@@ -496,7 +505,7 @@ app.get("/api/anilist/anime", async (req, res) => {
     return res.status(400).json({ error: "Provide a valid anime release year." })
   }
   try {
-    const cacheKey = "ANILIST_ANIME_PAGE_30:" + JSON.stringify({ page, search, genre, yearValue, season, sort })
+    const cacheKey = "ANILIST_CATALOG_ANIME_PAGE_30_V2:" + JSON.stringify({ page, search, genre, yearValue, season, sort })
     const result = await cached(cacheKey, async () => {
       const variables = {
         page,
@@ -745,10 +754,6 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
   }
 })
 
-app.get("/api/health", (_req, res) => {
-  res.set("Cache-Control", "no-store")
-  res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v5", playbackAvailabilityRoute: true })
-})
 async function getAniweebEpisodeLanguages(anilistId, episode) {
   const payload = await cached("ANIWEEB_EPISODES:" + anilistId, async () => {
     const response = await fetch("https://api.aniweeb.net/episodes/" + anilistId, {
