@@ -16,7 +16,7 @@ Vite runs at http://localhost:5173 and proxies `/api` requests to Express on por
 
 ## HD-1 Mikaza embed provider
 
-HD-1 uses Mikaza's AniList iframe route. The selected provider is `kira` by default, with `haiku` and `naoka` available as fallbacks. URLs are formed as `https://mikaza.buzz/embed/{provider}/ani/{anilist_id}/{episode}/{lang}`, where `provider` is `kira`, `haiku`, or `naoka`, and `lang` is `sub` or `dub`. The watch page exposes all three provider choices while HD-1 is selected and advances to the next fallback when the iframe reports an error. HD-2 and HD-3 retain their existing integrations.
+HD-1 uses Mikaza's AniList iframe route. The selected provider is `haiku` by default, with `kira` as the first fallback and `naoka` as the second fallback. URLs are formed as `https://mikaza.buzz/embed/{provider}/ani/{anilist_id}/{episode}/{lang}`, where `provider` is `kira`, `haiku`, or `naoka`, and `lang` is `sub` or `dub`. The watch page exposes all three provider choices while HD-1 is selected and advances to the next fallback when the iframe reports an error. HD-2 and HD-3 retain their existing integrations.
 ## Frontend page structure
 
 Page-specific JSX lives in `src/pages/`, with each route in its own file:
