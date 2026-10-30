@@ -1,10 +1,23 @@
 import express from "express"
+import { createRateLimiter } from "./security.js"
 import path from "node:path"
 import { readFile } from "node:fs/promises"
 import { fileURLToPath } from "node:url"
 
 const app = express()
 app.disable("x-powered-by")
+app.use((req, res, next) => {
+  res.set("X-Content-Type-Options", "nosniff")
+  res.set("X-Frame-Options", "DENY")
+  res.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  res.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+  res.set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+  if (req.secure) res.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+  next()
+})
+// In-memory IP limit protects the upstream metadata and playback APIs from bursts.
+// Keep proxy trust disabled unless deployment explicitly configures a trusted proxy.
+app.use("/api", createRateLimiter({ windowMs: 60_000, max: 180 }))
 app.use(express.json({ limit: "16kb" }))
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -282,7 +295,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     service: "aniscroll-api",
-    version: "anime-directory-v2+playback-availability-v5",
+    version: "anime-directory-v2+playback-availability-v6+api-hardening",
     animeDirectoryEndpoint: "/api/catalog/anime",
     playbackAvailabilityRoute: true,
   })
@@ -843,13 +856,18 @@ app.get(["/profile", "/watchlist", "/admin", "/sign-in"], async (req, res, next)
   }
 })
 
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "API endpoint not found" })
+})
+
 app.use(express.static(DIST))
 app.use((req, res, next) => {
   if (req.method !== "GET" || req.path.startsWith("/api/")) return next()
   res.sendFile(path.join(DIST, "index.html"), (error) => { if (error) next(error) })
 })
 app.use((error, _req, res, _next) => {
-  console.error(error)
+  console.error("Unhandled server error:", error?.message || "unknown error")
+  if (res.headersSent) return
   res.status(500).json({ error: "Unexpected server error" })
 })
 app.listen(PORT, () => console.log("Aniscroll server listening on port " + PORT))
