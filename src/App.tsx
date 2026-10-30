@@ -356,6 +356,7 @@ function App() {
     [animeResults, setAnimeResults] = useState<Anime[]>([]),
     [animePage, setAnimePage] = useState(1),
     [animeHasNextPage, setAnimeHasNextPage] = useState(false),
+    [animeTotal, setAnimeTotal] = useState(0),
     [animeLoading, setAnimeLoading] = useState(false),
     [animeError, setAnimeError] = useState(""),
     [animeReloadNonce, setAnimeReloadNonce] = useState(0),
@@ -537,6 +538,7 @@ function App() {
         if (!active) return
         setAnimeResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
         setAnimeHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
+        setAnimeTotal(Number(payload.pageInfo?.total || 0))
       })
       .catch((error) => {
         if (!active) return
@@ -1470,6 +1472,7 @@ function App() {
     setAnimePage,
     animeHasNextPage,
     setAnimeHasNextPage,
+    animeTotal,
     animeLoading,
     setAnimeLoading,
     animeError,
