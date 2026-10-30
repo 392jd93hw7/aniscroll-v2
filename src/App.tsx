@@ -262,7 +262,6 @@ function Icon({ name, size = 20 }: IconProps) {
       </>
     ),
     list: <path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />,
-    ),
     settings: (
       <>
         <circle cx="12" cy="12" r="3" />
