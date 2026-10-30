@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url"
 
 const app = express()
 app.disable("x-powered-by")
-if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1)
 app.use((req, res, next) => {
   res.set("X-Content-Type-Options", "nosniff")
   res.set("X-Frame-Options", "DENY")
@@ -39,6 +38,9 @@ try {
 } catch {
   // Production environments may inject variables directly instead.
 }
+
+// Apply proxy trust only after optional .env loading; set this only behind one trusted proxy.
+if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1)
 
 const PORT = Number(process.env.PORT || 3001)
 const ANILIST_URL = "https://graphql.anilist.co"
