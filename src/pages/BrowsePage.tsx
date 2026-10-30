@@ -193,7 +193,7 @@ export default function BrowsePage() {
             {!currentLoading && currentError && (
               <div className="empty-state" role="status">
                 <Icon name="info" size={38} />
-                <h2>{page === "Anime" ? "Anime unavailable" : "Movies unavailable"}</h2>
+                <h2>{isAnimePage ? "Anime unavailable" : "Movies unavailable"}</h2>
                 <p>{currentError}</p>
                 <button className="button purple" onClick={retryPage}>Try again</button>
               </div>
