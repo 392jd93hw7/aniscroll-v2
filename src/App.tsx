@@ -425,7 +425,7 @@ function App() {
     } catch { /* storage may be disabled */ }
   }, [saved, statuses, history, preferences])
   useEffect(() => {
-    if (page === "Movies" || page === "Home") return
+    if (page === "Movies") return
     let active = true
     const term = query.trim()
     const timer = window.setTimeout(async () => {
@@ -514,7 +514,7 @@ function App() {
     return () => { active = false }
   }, [page, query, moviesPage, moviesReloadNonce])
   useEffect(() => {
-    if (page !== "Schedule") return
+    if (page !== "Schedule" && page !== "Home") return
     let active = true
     setScheduleLoading(true)
     setScheduleError("")
