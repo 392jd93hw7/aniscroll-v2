@@ -644,7 +644,7 @@ app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
         if (!languageAvailability[language]) continue
         for (const provider of ["haiku", "kira", "naoka"]) {
           probes.push({
-            server: "HD-1", language, provider,
+            server: "HD-3", language, provider,
             url: "https://mikaza.buzz/embed/" + provider + "/ani/" + anilistId + "/" + episode + "/" + language,
             referer: "https://mikaza.buzz/",
           })
@@ -655,7 +655,7 @@ app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
           referer: "https://aniembed.se/",
         })
         probes.push({
-          server: "HD-3", language, provider: null,
+          server: "HD-1", language, provider: null,
           url: "https://aniplayer.xyz/embeds/" + anilistId + "/" + episode + "/" + language,
           referer: "https://aniplayer.xyz/",
         })
