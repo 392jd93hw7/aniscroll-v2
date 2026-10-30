@@ -1136,9 +1136,13 @@ function App() {
       })
       .then((payload) => {
         if (!active) return
-        setAudioAvailability(payload)
-        const subServers = Array.isArray(payload.available?.sub) ? payload.available.sub : []
-        const dubServers = Array.isArray(payload.available?.dub) ? payload.available.dub : []
+        if (typeof payload.languageAvailability?.sub !== "boolean" || typeof payload.languageAvailability?.dub !== "boolean") {
+          throw new Error("The playback API is outdated. Update and restart the Aniscroll backend.")
+        }
+        const subServers = payload.languageAvailability.sub && Array.isArray(payload.available?.sub) ? payload.available.sub : []
+        const dubServers = payload.languageAvailability.dub && Array.isArray(payload.available?.dub) ? payload.available.dub : []
+        const verifiedPayload = { ...payload, available: { sub: subServers, dub: dubServers } }
+        setAudioAvailability(verifiedPayload)
         const chosenTrack = (payload.available?.[audioTrack] || []).length ? audioTrack : subServers.length ? "sub" : dubServers.length ? "dub" : null
         if (!chosenTrack) return
         if (chosenTrack !== audioTrack) setAudioTrack(chosenTrack)
