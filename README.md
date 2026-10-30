@@ -19,9 +19,9 @@ Vite runs at http://localhost:5173 and proxies `/api` requests to Express on por
 The watch page requests `/api/playback/availability/:anilistId/:episode`. It first reads explicit per-episode `sub` and `dub` booleans from the Aniweeb `/episodes/:anilistId` response, then probes the configured embed URLs only for audio tracks confirmed by that episode record. The response includes `languageAvailability` booleans and groups available servers by language. The UI requires those explicit booleans and fails closed if the response is from an older backend or missing language flags. Results are cached for five minutes under a versioned key to prevent reuse of older HTTP-200-only results.
 
 Availability is determined by an HTTP response from each embed page plus basic unavailable-page markers. This is a provider reachability check, not a guarantee that the video will finish playing; a provider may still fail later inside its iframe. If an upstream anti-bot rule blocks server-side requests or the provider always returns a generic player page for missing tracks, the probe can be inconclusive and should be adjusted to the provider's documented availability API.
-## HD-1 Mikaza embed provider
+## HD-3 Mikaza embed provider
 
-HD-1 uses Mikaza's AniList iframe route. The selected provider is `haiku` by default, with `kira` as the first fallback and `naoka` as the second fallback. URLs are formed as `https://mikaza.buzz/embed/{provider}/ani/{anilist_id}/{episode}/{lang}`, where `provider` is `kira`, `haiku`, or `naoka`, and `lang` is `sub` or `dub`. The watch page exposes all three provider choices while HD-1 is selected and advances to the next fallback when the iframe reports an error. HD-2 and HD-3 retain their existing integrations.
+HD-3 uses Mikaza's AniList iframe route. The selected provider is `haiku` by default, with `kira` as the first fallback and `naoka` as the second fallback. URLs are formed as `https://mikaza.buzz/embed/{provider}/ani/{anilist_id}/{episode}/{lang}`, where `provider` is `kira`, `haiku`, or `naoka`, and `lang` is `sub` or `dub`. The watch page exposes all three provider choices while HD-3 is selected and advances to the next fallback when the iframe reports an error. HD-1 now uses the former HD-3 AniPlayer integration. HD-2 retains AniEmbed.
 ## Frontend page structure
 
 Page-specific JSX lives in `src/pages/`, with each route in its own file:
@@ -65,9 +65,9 @@ Anime detail pages fetch character profiles (including character images, roles, 
 - **AniList** supplies canonical anime IDs and anime-level metadata through GraphQL.
 - **Kitsu** supplies anime banner art and episode titles/thumbnails/details when data is available. Since AniList and Kitsu IDs differ, the backend maps through Kitsu's mapping endpoint, using title search only as a fallback.
 - Streaming choices are labelled **HD-1**, **HD-2**, and **HD-3**; audio options are **Sub** and **Dub**:
-  - HD-1: `https://anixo.buzz/embed/ani/{aniListId}/{episode}?track={sub|dub}`
+  - HD-1: `https://aniplayer.xyz/embeds/{aniListId}/{episode}/{sub|dub}`
   - HD-2: `https://aniembed.se/e/{aniListId}/{episode}?lang={sub|dub}`
-  - HD-3: `https://aniplayer.xyz/embeds/{aniListId}/{episode}/{sub|dub}`
+  - HD-3: `https://mikaza.buzz/embed/{provider}/ani/{aniListId}/{episode}/{sub|dub}`
 - Embedded players use a restrictive sandbox without popup or top-level-navigation permissions. It cannot guarantee ads inside the provider's frame will disappear or that every provider supports the sandbox restrictions.
 
 ## Accounts and storage
