@@ -116,7 +116,7 @@ export default function WatchPage() {
                 loading="eager"
                 allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write"
                 allowFullScreen
-                referrerPolicy="strict-origin-when-cross-origin"
+                referrerPolicy="origin"
                 onLoad={() => setEmbedError(false)}
                 onError={handleEmbedError}
               />
@@ -239,7 +239,10 @@ export default function WatchPage() {
             {embedError && (
               <p className="watch-mikaza-error" role="alert">The selected stream did not load. Choose another available provider or server.</p>
             )}
-            <p className={embedError ? "watch-server-note is-error" : "watch-server-note"}>{embedError ? "This source may be unavailable. Try another server." : "Choose a source to load the selected audio track. Availability depends on the provider."}</p>
+            <div className="watch-server-footer">
+              <p className={embedError ? "watch-server-note is-error" : "watch-server-note"}>{embedError ? "This source may be unavailable. Try another server." : "Choose a source to load the selected audio track. Availability depends on the provider."}</p>
+              {embedUrl && <a className="watch-open-provider" href={embedUrl} target="_blank" rel="noopener noreferrer">Open provider directly ↗</a>}
+            </div>
           </section>
 
           <section className="watch-current-episode">
