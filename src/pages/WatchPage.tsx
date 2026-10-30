@@ -38,8 +38,8 @@ export default function WatchPage() {
   const genres = aniListDetails?.genres || selected.genres || [selected.genre].filter(Boolean)
   const poster = selected.image || selected.banner || ""
   const heroArtwork = selected.banner || selected.image || ""
-  const availableSubServers: string[] = Array.isArray(audioAvailability?.available?.sub) ? audioAvailability.available.sub : []
-  const availableDubServers: string[] = Array.isArray(audioAvailability?.available?.dub) ? audioAvailability.available.dub : []
+  const availableSubServers: string[] = audioAvailability?.languageAvailability?.sub === true && Array.isArray(audioAvailability?.available?.sub) ? audioAvailability.available.sub : []
+  const availableDubServers: string[] = audioAvailability?.languageAvailability?.dub === true && Array.isArray(audioAvailability?.available?.dub) ? audioAvailability.available.dub : []
   const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-1"]?.[audioTrack]) ? audioAvailability.providers["HD-1"][audioTrack] : []
   const mikazaProviderDirectory = [
     { id: "haiku", label: "Haiku" },
