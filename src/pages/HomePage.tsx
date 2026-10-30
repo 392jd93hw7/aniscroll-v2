@@ -157,7 +157,7 @@ export default function HomePage() {
           )}
           <div className="continue-row">
             {anime
-              .filter((item: any) => history?.[item.title]?.lastWatchedAt && Number(history[item.title].progress) > 0 && Number(history[item.title].progress) < 100)
+              .filter((item: any) => history?.[item.title] && Number(history[item.title].progress) > 0 && Number(history[item.title].progress) < 100)
               .slice(0, 4)
               .map((a: any) => (
                 <article className="continue-card" key={a.title}>
