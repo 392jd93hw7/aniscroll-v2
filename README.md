@@ -16,7 +16,7 @@ Vite runs at http://localhost:5173 and proxies `/api` requests to Express on por
 
 ## Per-episode SUB/DUB availability
 
-The watch page requests `/api/playback/availability/:anilistId/:episode`. It first reads explicit per-episode `sub` and `dub` booleans from the Aniweeb `/episodes/:anilistId` response, then probes the configured embed URLs only for audio tracks confirmed by that episode record. The response includes `languageAvailability` booleans and groups available servers by language. The UI requires those explicit booleans and fails closed if the response is from an older backend or missing language flags. Results are cached for five minutes under a versioned key to prevent reuse of older HTTP-200-only results.
+The watch page requests `/api/playback/availability/:anilistId/:episode` and reads explicit per-episode `sub` and `dub` booleans from Aniweeb's `/episodes/:anilistId` response. It does not make server-side HTTP requests to the iframe providers to determine language or server availability, because providers may block backend probes while still accepting browser embeds. A confirmed audio track exposes the configured server options. Results are cached for five minutes under a versioned key.
 
 Availability is determined by an HTTP response from each embed page plus basic unavailable-page markers. This is a provider reachability check, not a guarantee that the video will finish playing; a provider may still fail later inside its iframe. If an upstream anti-bot rule blocks server-side requests or the provider always returns a generic player page for missing tracks, the probe can be inconclusive and should be adjusted to the provider's documented availability API.
 ## HD-3 Mikaza embed provider
