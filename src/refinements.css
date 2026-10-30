@@ -715,3 +715,9 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .watch-mikaza-fallbacks button.active small { color:#d6c1f7; }
 .watch-mikaza-fallbacks > span { flex-basis:100%; color:#8e8499; font-size:9px; }
 @media (max-width:560px) { .watch-mikaza-fallbacks { align-items:flex-start; gap:8px; } .watch-mikaza-fallbacks > strong { flex-basis:100%; } .watch-mikaza-fallbacks > div { gap:6px; } .watch-mikaza-fallbacks button { min-height:32px; padding:0 9px; } }
+
+/* Mikaza embed fallback controls and provider diagnostics */
+.watch-mikaza-fallbacks .watch-mikaza-next { min-height:30px; padding:0 10px; border:1px solid #665080; border-radius:3px; background:#241b30; color:#d9c5f7; font-size:9px; }
+.watch-mikaza-fallbacks .watch-mikaza-next:hover:not(:disabled) { border-color:#b38bf6; background:#30213f; color:#fff; }
+.watch-mikaza-fallbacks .watch-mikaza-next:disabled { opacity:.35; cursor:not-allowed; }
+.watch-mikaza-error { margin-top:10px; color:#f1a1a1; font-size:10px; line-height:1.6; }
