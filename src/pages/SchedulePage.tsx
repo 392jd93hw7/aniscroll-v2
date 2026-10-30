@@ -253,7 +253,7 @@ export default function SchedulePage() {
               const airingTime = formatInTimeZone(
                 new Date(release.airingAt * 1000),
                 timeZone,
-                { hour: "2-digit", minute: "2-digit" },
+                { hour: "2-digit", minute: "2-digit", hourCycle: "h23" },
               )
               return (
                 <article className={`schedule-release-card ${isNextUp ? "is-next-up" : ""}`} key={release.id}>
