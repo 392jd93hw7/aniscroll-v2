@@ -346,6 +346,10 @@ function App() {
     [compact, setCompact] = useState(false),
     [reminders, setReminders] = useState<string[]>([]),
     [remoteAnime, setRemoteAnime] = useState<Anime[]>([]),
+    [homeTrendingAnime, setHomeTrendingAnime] = useState<Anime[]>([]),
+    [homeTrendingLoading, setHomeTrendingLoading] = useState(false),
+    [homeTrendingError, setHomeTrendingError] = useState(""),
+    [homeKitsuBanners, setHomeKitsuBanners] = useState<Record<number, string>>({}),
     [movieResults, setMovieResults] = useState<Anime[]>([]),
     [moviesPage, setMoviesPage] = useState(1),
     [moviesHasNextPage, setMoviesHasNextPage] = useState(false),
@@ -421,7 +425,7 @@ function App() {
     } catch { /* storage may be disabled */ }
   }, [saved, statuses, history, preferences])
   useEffect(() => {
-    if (page === "Movies") return
+    if (page === "Movies" || page === "Home") return
     let active = true
     const term = query.trim()
     const timer = window.setTimeout(async () => {
@@ -435,6 +439,55 @@ function App() {
     }, term.length > 1 ? 260 : 50)
     return () => { active = false; window.clearTimeout(timer) }
   }, [query, page])
+  useEffect(() => {
+    if (page !== "Home") return
+    let active = true
+    setHomeTrendingLoading(true)
+    setHomeTrendingError("")
+    void fetch("/api/anilist/trending", { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(payload.error || "AniList trending feed is unavailable")
+        return payload
+      })
+      .then((payload) => {
+        if (!active) return
+        if (!Array.isArray(payload.results) || !payload.results.length) {
+          setHomeTrendingAnime([])
+          setHomeTrendingError("AniList has no trending anime to show right now.")
+          return
+        }
+        const trending = payload.results
+          .map((item: any) => ({ ...normalizeAniList(item), label: "TRENDING" }))
+          .filter((item: Anime) => Number(item.id) > 0)
+        setHomeTrendingAnime(trending)
+        // Kitsu cover artwork is used as the wide home hero background.
+        const bannerRequests = trending.slice(0, 4).map(async (item: Anime) => {
+          try {
+            const response = await fetch("/api/kitsu/" + item.id)
+            if (!response.ok) return null
+            const kitsu = await response.json()
+            const banner = kitsu.anime?.banner || kitsu.anime?.poster || null
+            return banner ? [Number(item.id), banner] as [number, string] : null
+          } catch {
+            return null
+          }
+        })
+        void Promise.all(bannerRequests).then((entries) => {
+          if (!active) return
+          setHomeKitsuBanners(Object.fromEntries(entries.filter(Boolean) as [number, string][]))
+        })
+        if (!trending.length) setHomeTrendingError("AniList returned no valid trending anime.")
+      })
+      .catch((error) => {
+        if (active) {
+          setHomeTrendingAnime([])
+          setHomeTrendingError(error instanceof Error ? error.message : "Could not load trending anime from AniList.")
+        }
+      })
+      .finally(() => { if (active) setHomeTrendingLoading(false) })
+    return () => { active = false }
+  }, [page])
   useEffect(() => {
     if (page !== "Movies") return
     let active = true
@@ -461,7 +514,7 @@ function App() {
     return () => { active = false }
   }, [page, query, moviesPage, moviesReloadNonce])
   useEffect(() => {
-    if (page !== "Schedule" && page !== "Home") return
+    if (page !== "Schedule") return
     let active = true
     setScheduleLoading(true)
     setScheduleError("")
@@ -798,7 +851,22 @@ function App() {
     window.addEventListener("keydown", handler)
     return () => window.removeEventListener("keydown", handler)
   }, [page])
-  const hero = slide === 0 ? featured : catalog[(slide - 1) % Math.max(1, Math.min(6, catalog.length))]
+  const homeTrendingCatalog: Anime[] = homeTrendingAnime
+    .filter((item) => !adminOverrides.some((override) => Number(override.anilist_id) === Number(item.id) && override.hidden))
+    .map((item) => {
+      const override = adminOverrides.find((row) => Number(row.anilist_id) === Number(item.id))
+      return {
+        ...item,
+        title: override?.title_override || item.title,
+        image: override?.cover_url || item.image,
+        banner: override?.banner_url || item.banner,
+        synopsis: override?.synopsis_override || item.synopsis,
+        label: "TRENDING",
+      }
+    })
+  const homeHeroItems = homeTrendingCatalog.slice(0, 4)
+  const hero = homeHeroItems[Math.min(slide, Math.max(0, homeHeroItems.length - 1))] || featured
+  const homeHeroBanner = hero.id ? homeKitsuBanners[Number(hero.id)] || hero.banner || hero.image : hero.image
   const info = storyFor(selected.title) || {
     synopsis: selected.synopsis || "Explore the story and world of this anime.",
     alternative: selected.altTitle || selected.title,
@@ -1315,6 +1383,13 @@ function App() {
     setReminders,
     remoteAnime,
     setRemoteAnime,
+    homeTrendingAnime,
+    homeTrendingCatalog,
+    homeTrendingLoading,
+    homeTrendingError,
+    homeKitsuBanners,
+    homeHeroItems,
+    homeHeroBanner,
     movieResults,
     setMovieResults,
     moviesPage,
