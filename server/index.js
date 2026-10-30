@@ -815,8 +815,27 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
       episodesUrl.searchParams.set("page[offset]", "0")
       episodesUrl.searchParams.set("sort", "number")
       try {
-        const payload = await getJson(episodesUrl.toString())
-        return { anime, episodes: (payload.data || []).map((ep) => normalizeKitsuEpisode(ep, anime.poster || anime.banner)) }
+        // Kitsu paginates episode lists; follow its next links so long-running anime
+        // aren't silently truncated to the first 20 episodes.
+        const allEpisodes = []
+        let nextUrl = episodesUrl.toString()
+        const seenUrls = new Set()
+        while (nextUrl && allEpisodes.length < 2000 && !seenUrls.has(nextUrl)) {
+          seenUrls.add(nextUrl)
+          const payload = await getJson(nextUrl)
+          if (!Array.isArray(payload.data)) break
+          allEpisodes.push(...payload.data)
+          const next = payload.links?.next
+          if (!next || !payload.data.length) break
+          nextUrl = new URL(next, KITSU_URL + "/").toString()
+        }
+        const uniqueEpisodes = [...new Map(allEpisodes.map((ep) => [String(ep.id), ep])).values()]
+        uniqueEpisodes.sort((a, b) => {
+          const an = Number(a.attributes?.number ?? a.attributes?.relativeNumber ?? 0)
+          const bn = Number(b.attributes?.number ?? b.attributes?.relativeNumber ?? 0)
+          return an - bn
+        })
+        return { anime, episodes: uniqueEpisodes.map((ep) => normalizeKitsuEpisode(ep, anime.poster || anime.banner)) }
       } catch { return { anime, episodes: [] } }
     }, 30 * 60 * 1000)
     res.json(result)
