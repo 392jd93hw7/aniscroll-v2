@@ -359,6 +359,7 @@ function App() {
     [kitsuAnime, setKitsuAnime] = useState<any>(null),
     [kitsuEpisodes, setKitsuEpisodes] = useState<any[]>([]),
     [streamServer, setStreamServer] = useState("HD-1"),
+    [mikazaProvider, setMikazaProvider] = useState<"kira" | "haiku" | "naoka">("kira"),
     [audioTrack, setAudioTrack] = useState<"sub" | "dub">("sub"),
     [embedError, setEmbedError] = useState(false),
     [metadataLoading, setMetadataLoading] = useState(false),
@@ -900,7 +901,7 @@ function App() {
 
   const embedUrl = aniListId
     ? streamServer === "HD-1"
-      ? "https://anixo.buzz/embed/ani/" + aniListId + "/" + episode + "?track=" + audioTrack
+      ? "https://mikaza.buzz/embed/" + mikazaProvider + "/ani/" + aniListId + "/" + episode + "/" + audioTrack
       : streamServer === "HD-2"
         ? "https://aniembed.se/e/" + aniListId + "/" + episode + "?lang=" + audioTrack
         : "https://aniplayer.xyz/embeds/" + aniListId + "/" + episode + "/" + audioTrack
@@ -1287,6 +1288,8 @@ function App() {
     setKitsuEpisodes,
     streamServer,
     setStreamServer,
+    mikazaProvider,
+    setMikazaProvider,
     audioTrack,
     setAudioTrack,
     embedError,
