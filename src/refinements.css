@@ -721,3 +721,8 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .watch-mikaza-fallbacks .watch-mikaza-next:hover:not(:disabled) { border-color:#b38bf6; background:#30213f; color:#fff; }
 .watch-mikaza-fallbacks .watch-mikaza-next:disabled { opacity:.35; cursor:not-allowed; }
 .watch-mikaza-error { margin-top:10px; color:#f1a1a1; font-size:10px; line-height:1.6; }
+
+/* Availability-driven server/audio controls */
+.watch-availability-message { width:100%; padding:8px 0; color:#a99eb8; font-size:10px; line-height:1.6; }
+.watch-availability-message.is-error { color:#eda1a1; }
+.watch-server-rows:has(.watch-availability-message) { min-height:34px; }
