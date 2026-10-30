@@ -14,7 +14,7 @@ export default function WatchPage() {
   } = useAppPageData() as any
 
   const [episodeSearch, setEpisodeSearch] = useState("")
-  const [episodeView, setEpisodeView] = useState<"list" | "grid">("grid")
+  const episodeView = "list" as const
   const [theaterMode, setTheaterMode] = useState(false)
   const [autoplayStart, setAutoplayStart] = useState(true)
   const [autoSkip, setAutoSkip] = useState(false)
@@ -261,7 +261,6 @@ export default function WatchPage() {
           <div className="watch-sidebar-heading">
             <div><h2>Episodes <span>{episodeCount}</span></h2></div>
             <div className="watch-view-switch">
-              <button aria-label="Grid view" aria-pressed={episodeView === "grid"} className={episodeView === "grid" ? "active" : ""} onClick={() => setEpisodeView("grid")}><Icon name="grid" size={17} /></button>
               <button aria-label="List view" aria-pressed={episodeView === "list"} className={episodeView === "list" ? "active" : ""} onClick={() => setEpisodeView("list")}><Icon name="list" size={17} /></button>
             </div>
           </div>
