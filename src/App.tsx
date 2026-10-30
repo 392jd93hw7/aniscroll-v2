@@ -890,7 +890,10 @@ function App() {
     }
   }, [menu])
   useEffect(() => {
-    if (page === "Anime" || page === "Movies") return
+    if (page === "Anime" || page === "Movies") {
+      setLoading(false)
+      return
+    }
     setLoading(true)
     const id = window.setTimeout(() => setLoading(false), 180)
     return () => window.clearTimeout(id)
@@ -1695,6 +1698,7 @@ function App() {
                 onClick={() => {
                   if (menu === "genres") {
                     setGenre(item)
+                    if (page === "Anime") setAnimePage(1)
                     go("Discover")
                   } else if (menu === "language") {
                     notify(`Interface language: ${item} (preview)`)
