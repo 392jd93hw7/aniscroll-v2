@@ -260,9 +260,7 @@ export default function WatchPage() {
         <aside className="watch-episode-sidebar">
           <div className="watch-sidebar-heading">
             <div><h2>Episodes <span>{episodeCount}</span></h2></div>
-            <div className="watch-view-switch">
-              <button aria-label="List view" aria-pressed={episodeView === "list"} className={episodeView === "list" ? "active" : ""} onClick={() => setEpisodeView("list")}><Icon name="list" size={17} /></button>
-            </div>
+
           </div>
           <div className="watch-sidebar-filters">
             <label>Season
@@ -273,7 +271,7 @@ export default function WatchPage() {
             <div className="watch-episode-search"><Icon name="search" size={16} /><input value={episodeSearch} onChange={(event) => setEpisodeSearch(event.target.value)} placeholder="Search episode number or title" aria-label="Search episodes" /></div>
             <div className="watch-episode-summary"><span>Episodes 1–{episodeCount}</span><span>Available episodes</span></div>
           </div>
-          <div className={`watch-episode-scroll ${episodeView === "grid" ? "is-grid" : ""}`}>
+          <div className="watch-episode-scroll">
             {filteredEpisodeNumbers.map((item: { title: string; number: number }) => {
               const number = item.number
               const watched = history?.[selected.title]?.season === season && history?.[selected.title]?.episode === number
@@ -287,7 +285,7 @@ export default function WatchPage() {
                   onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); goToEpisode(number) }}
                 >
                   <div className="watch-episode-image"><img src={thumbnail} alt="" loading="lazy" /><span><Icon name="play" size={15} /></span></div>
-                  <div className="watch-episode-meta"><span className="watch-episode-eyebrow">{episodeView === "grid" ? number : "EP " + String(number).padStart(2, "0")}</span><h3>{item.title}</h3></div>
+                  <div className="watch-episode-meta"><span className="watch-episode-eyebrow">{"EP " + String(number).padStart(2, "0")}</span><h3>{item.title}</h3></div>
                   <small>{formatTime(duration)}</small>
                   {watched && <span className="watch-episode-progress">{Math.round(history[selected.title].progress)}% watched</span>}
                 </a>
