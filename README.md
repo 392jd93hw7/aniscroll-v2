@@ -22,6 +22,9 @@ Availability is determined by an HTTP response from each embed page plus basic u
 ## HD-3 Mikaza embed provider
 
 HD-3 uses Mikaza's AniList iframe route. The selected provider is `haiku` by default, with `kira` as the first fallback and `naoka` as the second fallback. URLs are formed as `https://mikaza.buzz/embed/{provider}/ani/{anilist_id}/{episode}/{lang}`, where `provider` is `kira`, `haiku`, or `naoka`, and `lang` is `sub` or `dub`. The watch page exposes all three provider choices while HD-3 is selected and advances to the next fallback when the iframe reports an error. HD-1 now uses the former HD-3 AniPlayer integration. HD-2 retains AniEmbed.
+## Home page data sources
+
+The Home page is intentionally limited to the live AniList trending feed from `/api/anilist/trending` (`TRENDING_DESC`). It no longer renders the local sample catalog, continue-watching shelf, genre collection, seasonal promo shelf, recommendations shelf, or release schedule. The first four trending titles drive the hero carousel. For each of those titles, the client requests `/api/kitsu/:anilistId` and uses Kitsu's `coverImage`-derived `anime.banner` as the hero background; when Kitsu has no matching cover image, the hero falls back to AniList's `bannerImage` and then its cover image.
 ## Frontend page structure
 
 Page-specific JSX lives in `src/pages/`, with each route in its own file:
