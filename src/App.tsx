@@ -350,6 +350,9 @@ function App() {
     [homeTrendingLoading, setHomeTrendingLoading] = useState(false),
     [homeTrendingError, setHomeTrendingError] = useState(""),
     [homeKitsuBanners, setHomeKitsuBanners] = useState<Record<number, string>>({}),
+    [homeGenreBanners, setHomeGenreBanners] = useState<any[]>([]),
+    [homeGenreLoading, setHomeGenreLoading] = useState(false),
+    [homeGenreError, setHomeGenreError] = useState(""),
     [movieResults, setMovieResults] = useState<Anime[]>([]),
     [moviesPage, setMoviesPage] = useState(1),
     [moviesHasNextPage, setMoviesHasNextPage] = useState(false),
@@ -444,6 +447,24 @@ function App() {
     let active = true
     setHomeTrendingLoading(true)
     setHomeTrendingError("")
+    setHomeGenreLoading(true)
+    setHomeGenreError("")
+    void fetch("/api/anilist/genre-banners", { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(payload.error || "Genre anime could not be loaded")
+        return payload
+      })
+      .then((payload) => {
+        if (!active) return
+        setHomeGenreBanners(Array.isArray(payload.results) ? payload.results : [])
+      })
+      .catch((error) => {
+        if (!active) return
+        setHomeGenreBanners([])
+        setHomeGenreError(error instanceof Error ? error.message : "Unable to load genre artwork.")
+      })
+      .finally(() => { if (active) setHomeGenreLoading(false) })
     void fetch("/api/anilist/trending", { cache: "no-store" })
       .then(async (response) => {
         const payload = await response.json().catch(() => ({}))
@@ -1388,6 +1409,9 @@ function App() {
     homeTrendingLoading,
     homeTrendingError,
     homeKitsuBanners,
+    homeGenreBanners,
+    homeGenreLoading,
+    homeGenreError,
     homeHeroItems,
     homeHeroBanner,
     movieResults,
