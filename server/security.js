@@ -21,6 +21,7 @@ export function createRateLimiter(options = {}) {
       for (const [clientKey, client] of clients) {
         if (timestamp - client.startedAt >= windowMs) clients.delete(clientKey)
       }
+      while (clients.size > 10_000) clients.delete(clients.keys().next().value)
       requestsSinceSweep = 0
     }
 
