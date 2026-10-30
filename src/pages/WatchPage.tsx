@@ -212,7 +212,6 @@ export default function WatchPage() {
             {embedError && streamServer === "HD-1" && (
               <p className="watch-mikaza-error" role="alert">The selected Mikaza embed could not be loaded. Try another provider above or switch to HD-2 / HD-3.</p>
             )}
-            )}
             <p className={embedError ? "watch-server-note is-error" : "watch-server-note"}>{embedError ? "This source may be unavailable. Try another server." : "Choose a source to load the selected audio track. Availability depends on the provider."}</p>
           </section>
 
