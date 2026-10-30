@@ -863,6 +863,51 @@ function App() {
     }
   }, [page, selected.title, episode, season, progress])
   useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !sessionUserId || !selected.id) return
+    let active = true
+    const loadCloudProgress = async () => {
+      const { data, error } = await supabase
+        .from("watch_progress")
+        .select("season_number,episode_number,progress_percent,updated_at")
+        .eq("user_id", sessionUserId)
+        .eq("anilist_id", Number(selected.id))
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (!active || error || !data) return
+      const cloudProgress = {
+        season: Number(data.season_number) || 1,
+        episode: Number(data.episode_number) || 1,
+        progress: Math.max(0, Math.min(100, Number(data.progress_percent) || 0)),
+      }
+      setHistory((current) => {
+        const local = current[selected.title]
+        // Prefer existing local progress when it is more recent than the cloud record.
+        if (local && local.season === cloudProgress.season && local.episode === cloudProgress.episode) return current
+        return { ...current, [selected.title]: cloudProgress }
+      })
+    }
+    void loadCloudProgress()
+    return () => { active = false }
+  }, [hasSupabaseConfig, sessionUserId, selected.id, selected.title])
+
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !sessionUserId || !selected.id) return
+    const current = history[selected.title]
+    if (!current) return
+    const timer = window.setTimeout(() => {
+      void supabase.from("watch_progress").upsert({
+        user_id: sessionUserId,
+        anilist_id: Number(selected.id),
+        season_number: Math.max(1, Number(current.season) || 1),
+        episode_number: Math.max(1, Number(current.episode) || 1),
+        progress_percent: Math.max(0, Math.min(100, Number(current.progress) || 0)),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id,anilist_id,season_number" })
+    }, 800)
+    return () => window.clearTimeout(timer)
+  }, [hasSupabaseConfig, sessionUserId, selected.id, selected.title, history])
+  useEffect(() => {
     if (!playing || playerSettings || !controlsVisible) return
     const id = window.setTimeout(() => setControlsVisible(false), 3500)
     return () => window.clearTimeout(id)
