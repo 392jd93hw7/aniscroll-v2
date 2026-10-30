@@ -288,7 +288,7 @@ export default function WatchPage() {
                   onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); goToEpisode(number) }}
                 >
                   <div className="watch-episode-image"><img src={thumbnail} alt="" loading="lazy" /><span><Icon name="play" size={15} /></span></div>
-                  <div className="watch-episode-meta"><span className="watch-episode-eyebrow">EP {String(number).padStart(2, "0")}</span><h3>{item.title}</h3></div>
+                  <div className="watch-episode-meta"><span className="watch-episode-eyebrow">{episodeView === "grid" ? number : "EP " + String(number).padStart(2, "0")}</span><h3>{item.title}</h3></div>
                   <small>{formatTime(duration)}</small>
                   {watched && <span className="watch-episode-progress">{Math.round(history[selected.title].progress)}% watched</span>}
                 </a>
