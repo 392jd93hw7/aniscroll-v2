@@ -133,25 +133,7 @@ export default function HomePage() {
         )}
       </section>
 
-      <div className="home-content home-trending-content">
-        <section>
-          <div className="section-heading">
-            <div>
-              <h2>Trending anime</h2>
-              <span className="heading-note">Live ranking from AniList · refreshed regularly</span>
-            </div>
-            <span className="text-link">{homeTrendingCatalog.length} titles</span>
-          </div>
-          {homeTrendingLoading && !hasTrending ? (
-            <p className="home-trending-message">Loading trending anime from AniList…</p>
-          ) : homeTrendingError && !hasTrending ? (
-            <p className="home-trending-message is-error">{homeTrendingError}</p>
-          ) : (
-            <div className="poster-row" aria-label="AniList trending anime">
-              {homeTrendingCatalog.map((item: any, index: number) => card(item, index))}
-            </div>
-          )}
-        </section>
+      <div className="home-content">
         <section>
           {heading(
             "Pick up where you left off",
@@ -162,46 +144,49 @@ export default function HomePage() {
             },
           )}
           <div className="continue-row">
-            {[anime[1], anime[3], anime[0], anime[7]].map((a: any) => (
-              <article className="continue-card" key={a.title}>
-                <button
-                  className="continue-image"
-                  aria-label={`Resume ${a.title}`}
-                  onClick={() =>
-                    watch(
-                      a,
-                      history[a.title].episode,
-                      history[a.title].season,
-                    )
-                  }
-                >
-                  <img src={a.image} alt={a.title} />
-                  <span className="episode-badge">
-                    S{history[a.title].season} E{history[a.title].episode}
-                  </span>
-                  <span className="resume-play">
-                    <Icon name="play" size={22} />
-                  </span>
-                  <span className="time-left">
-                    {Math.ceil(
-                      ((100 - history[a.title].progress) *
-                        runtimeFor(a.title)) /
-                        6000,
-                    )}
-                    m left
-                  </span>
-                  <span className="progress-track">
-                    <span style={{ width: `${history[a.title].progress}%` }} />
-                  </span>
-                </button>
-                <button className="continue-title" onClick={() => detail(a)}>
-                  {a.title}
-                </button>
-                <p>
-                  {storyFor(a.title).episodes[history[a.title].episode - 1]}
-                </p>
-              </article>
-            ))}
+            {anime
+              .filter((item: any) => history?.[item.title])
+              .slice(0, 4)
+              .map((a: any) => (
+                <article className="continue-card" key={a.title}>
+                  <button
+                    className="continue-image"
+                    aria-label={`Resume ${a.title}`}
+                    onClick={() =>
+                      watch(
+                        a,
+                        history[a.title].episode,
+                        history[a.title].season,
+                      )
+                    }
+                  >
+                    <img src={a.image} alt={a.title} />
+                    <span className="episode-badge">
+                      S{history[a.title].season} E{history[a.title].episode}
+                    </span>
+                    <span className="resume-play">
+                      <Icon name="play" size={22} />
+                    </span>
+                    <span className="time-left">
+                      {Math.ceil(
+                        ((100 - history[a.title].progress) *
+                          runtimeFor(a.title)) /
+                          6000,
+                      )}
+                      m left
+                    </span>
+                    <span className="progress-track">
+                      <span style={{ width: `${history[a.title].progress}%` }} />
+                    </span>
+                  </button>
+                  <button className="continue-title" onClick={() => detail(a)}>
+                    {a.title}
+                  </button>
+                  <p>
+                    {storyFor(a.title).episodes[history[a.title].episode - 1]}
+                  </p>
+                </article>
+              ))}
           </div>
         </section>
 
@@ -219,13 +204,10 @@ export default function HomePage() {
         </section>
 
         <section>
-          {heading(
-            "Popular this season",
-            "Fresh stories. New obsessions.",
-          )}
+          {heading("Popular this season", "Fresh stories. New obsessions.")}
           <div className="season-banner">
             <div>
-              <span className="eyebrow">THE CURRENT COLLECTION</span>
+              <span className="eyebrow">THE SPRING COLLECTION</span>
               <h2>
                 A new season.
                 <br />A whole new world.
@@ -314,7 +296,7 @@ export default function HomePage() {
                       notify("Reminder preference updated")
                     }}
                   >
-                    <Icon name="bell" />
+                    <Icon name={reminders.includes(animeItem.title) ? "check" : "bell"} />
                   </button>
                 </div>
               )
