@@ -20,7 +20,7 @@ export default function BrowsePage() {
   const totalTitles = isAnimePage ? animeTotal : filtered.length
   const resetPagination = () => {
     if (isAnimePage) setAnimePage(1)
-    else resetPagination()
+    else setMoviesPage(1)
   }
   const changePage = (delta: number) => {
     if (isAnimePage) setAnimePage((current: number) => Math.max(1, current + delta))
