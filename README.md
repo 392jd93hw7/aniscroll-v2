@@ -14,6 +14,11 @@ npm run dev
 
 Vite runs at http://localhost:5173 and proxies `/api` requests to Express on port 3001. Build with `npm run build`; `npm start` serves the built app and API on `PORT` (default 3001).
 
+## Per-episode SUB/DUB availability
+
+The watch page requests `/api/playback/availability/:anilistId/:episode` and checks the actual episode embed URLs for HD-1 (Mikaza Haiku, Kira, and Naoka), HD-2, and HD-3 in both `sub` and `dub` modes. The response groups available servers by language and lists the Mikaza variants that responded for each track. The UI only renders language rows and server buttons present in that response; the audio setting dropdown uses the same availability data. Results are cached for two minutes.
+
+Availability is determined by an HTTP response from each embed page plus basic unavailable-page markers. This is a provider reachability check, not a guarantee that the video will finish playing; a provider may still fail later inside its iframe. If an upstream anti-bot rule blocks server-side requests or the provider always returns a generic player page for missing tracks, the probe can be inconclusive and should be adjusted to the provider's documented availability API.
 ## HD-1 Mikaza embed provider
 
 HD-1 uses Mikaza's AniList iframe route. The selected provider is `haiku` by default, with `kira` as the first fallback and `naoka` as the second fallback. URLs are formed as `https://mikaza.buzz/embed/{provider}/ani/{anilist_id}/{episode}/{lang}`, where `provider` is `kira`, `haiku`, or `naoka`, and `lang` is `sub` or `dub`. The watch page exposes all three provider choices while HD-1 is selected and advances to the next fallback when the iframe reports an error. HD-2 and HD-3 retain their existing integrations.
