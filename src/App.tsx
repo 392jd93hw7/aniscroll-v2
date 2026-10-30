@@ -467,7 +467,7 @@ function App() {
             const response = await fetch("/api/kitsu/" + item.id)
             if (!response.ok) return null
             const kitsu = await response.json()
-            const banner = kitsu.anime?.banner || kitsu.anime?.poster || null
+            const banner = kitsu.anime?.banner || null
             return banner ? [Number(item.id), banner] as [number, string] : null
           } catch {
             return null
