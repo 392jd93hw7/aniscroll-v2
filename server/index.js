@@ -389,20 +389,34 @@ app.get("/api/anilist/genre-banners", async (_req, res) => {
     { name: "Supernatural", field: "genre_in", value: "Supernatural" },
   ]
   try {
-    const results = await cached("ANILIST_KITSU_GENRE_BANNERS_V1", async () => {
+    const results = await cached("ANILIST_KITSU_GENRE_BANNERS_V2_UNIQUE", async () => {
       const selections = genreFilters.map((filter, index) => {
         const alias = "genre" + index
-        return alias + ': Page(page: 1, perPage: 6) { media(type: ANIME, ' + filter.field + ': [' + JSON.stringify(filter.value) + '], sort: [TRENDING_DESC, POPULARITY_DESC], isAdult: false) { ' + MEDIA_FIELDS + ' } }'
+        return alias + ': Page(page: 1, perPage: 20) { media(type: ANIME, ' + filter.field + ': [' + JSON.stringify(filter.value) + '], sort: [TRENDING_DESC, POPULARITY_DESC], isAdult: false) { ' + MEDIA_FIELDS + ' } }'
       })
       const payload = await queryAniList("query { " + selections.join(" ") + " }")
-      const items = await Promise.all(genreFilters.map(async (filter, index) => {
-        const candidates = payload["genre" + index]?.media || []
-        if (!candidates.length) return { genre: filter.name, title: null, anilistId: null, banner: null, image: null, imageSource: null }
-        let anime = candidates[0]
+      const usedAnimeIds = new Set()
+      const items = []
+      const normalizeTitle = (value) => String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
+
+      // Process categories in display order and reserve every selected AniList ID.
+      // A title already used by an earlier category is never reused.
+      for (let index = 0; index < genreFilters.length; index += 1) {
+        const filter = genreFilters[index]
+        const candidates = (payload["genre" + index]?.media || [])
+          .filter((candidate) => Number(candidate.id) > 0 && !usedAnimeIds.has(Number(candidate.id)))
+
+        if (!candidates.length) {
+          items.push({ genre: filter.name, title: null, anilistId: null, banner: null, image: null, imageSource: null })
+          continue
+        }
+
+        const fallbackAnime = candidates[0]
+        let anime = null
         let kitsuBanner = null
-        const normalizeTitle = (value) => String(value || "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "")
-        // Prefer the highest-trending candidate with a verified matching Kitsu cover image.
-        for (const candidate of candidates.slice(0, 3)) {
+
+        // Prefer a distinct candidate with a matching Kitsu cover banner.
+        for (const candidate of candidates.slice(0, 5)) {
           try {
             const record = await cached("KITSU_GENRE_BANNER:" + candidate.id, async () => findKitsuAnime(Number(candidate.id)), 12 * 60 * 60 * 1000)
             const attributes = record?.attributes || {}
@@ -420,16 +434,22 @@ app.get("/api/anilist/genre-banners", async (_req, res) => {
             console.warn("Kitsu genre banner lookup failed for AniList ID " + candidate.id + ":", error?.message || error)
           }
         }
+
+        // If none of the first distinct candidates has Kitsu cover art, keep the best
+        // remaining AniList match and use its AniList banner/cover fallback.
+        if (!anime) anime = fallbackAnime
+        usedAnimeIds.add(Number(anime.id))
+
         const fallback = anime.bannerImage || anime.coverImage?.extraLarge || anime.coverImage?.large || null
-        return {
+        items.push({
           genre: filter.name,
           title: anime.title?.english || anime.title?.romaji || anime.title?.native || "Anime",
           anilistId: Number(anime.id),
           banner: kitsuBanner || fallback,
           image: kitsuBanner || fallback,
           imageSource: kitsuBanner ? "Kitsu" : fallback ? "AniList fallback" : null,
-        }
-      }))
+        })
+      }
       return items
     }, 12 * 60 * 60 * 1000)
     res.set("Cache-Control", "public, max-age=3600")
