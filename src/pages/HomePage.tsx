@@ -21,8 +21,10 @@ export default function HomePage() {
     heading,
     setTab,
     setSeasonFilter,
-    season,
     setGenre,
+    go,
+    reminders,
+    setReminders,
     airingSchedule,
     scheduleLoading,
     scheduleError,
@@ -155,9 +157,8 @@ export default function HomePage() {
             "Pick up where you left off",
             "Continue Watching",
             () => {
+              go("Watchlist")
               setTab("Currently Watching")
-              // Keep the original Home-to-watchlist navigation action.
-              window.location.assign("/watchlist")
             },
           )}
           <div className="continue-row">
@@ -237,9 +238,8 @@ export default function HomePage() {
               <button
                 className="button white"
                 onClick={() => {
-                  setSeasonFilter("All seasons" === season ? "All seasons" : season)
-                  // Open the anime browser using the existing navigation helper.
-                  window.location.assign("/discover")
+                  setSeasonFilter("Spring")
+                  go("Discover")
                 }}
               >
                 Explore the season <Icon name="chevron" size={17} />
@@ -271,7 +271,7 @@ export default function HomePage() {
                 key={genre}
                 onClick={() => {
                   setGenre(genre)
-                  window.location.assign("/discover")
+                  go("Discover")
                 }}
                 style={{
                   backgroundImage: `linear-gradient(90deg,rgba(20,12,35,.8),rgba(20,12,35,.3)),url(${catalog[index % catalog.length].image})`,
@@ -285,9 +285,7 @@ export default function HomePage() {
         </section>
 
         <section>
-          {heading("Coming up next", "Never miss a moment", () => {
-            window.location.assign("/schedule")
-          })}
+          {heading("Coming up next", "Never miss a moment", () => go("Schedule"))}
           <div className="schedule-list">
             {airingSchedule.slice(0, 3).map((release: any) => {
               const animeItem = normalizeAniList(release.media)
@@ -308,7 +306,13 @@ export default function HomePage() {
                   </div>
                   <button
                     aria-label={"Remind me about " + animeItem.title}
-                    onClick={() => notify("Reminder preference updated")}
+                    className={reminders.includes(animeItem.title) ? "active" : ""}
+                    onClick={() => {
+                      setReminders((items: string[]) => items.includes(animeItem.title)
+                        ? items.filter((title) => title !== animeItem.title)
+                        : [...items, animeItem.title])
+                      notify("Reminder preference updated")
+                    }}
                   >
                     <Icon name="bell" />
                   </button>
