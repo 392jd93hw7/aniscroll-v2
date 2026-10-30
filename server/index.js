@@ -600,7 +600,7 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
 
 app.get("/api/health", (_req, res) => {
   res.set("Cache-Control", "no-store")
-  res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v4", playbackAvailabilityRoute: true })
+  res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v5", playbackAvailabilityRoute: true })
 })
 async function getAniweebEpisodeLanguages(anilistId, episode) {
   const payload = await cached("ANIWEEB_EPISODES:" + anilistId, async () => {
@@ -630,53 +630,31 @@ app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
     return res.status(400).json({ error: "A valid AniList ID and episode number are required." })
   }
   try {
-    // Use explicit per-episode sub/dub booleans as the language source of truth.
-    // Embed pages can return HTTP 200 even when the requested audio track is absent.
-    const result = await cached("PLAYBACK_LANGUAGES_V4:" + anilistId + ":" + episode, async () => {
+    // Language availability is episode-specific. Do not HTTP-probe embed pages server-side:
+    // providers may block backend requests even when their browser iframe works.
+    const result = await cached("PLAYBACK_LANGUAGES_V5:" + anilistId + ":" + episode, async () => {
       const languageAvailability = await getAniweebEpisodeLanguages(anilistId, episode)
       const providers = {
         "HD-1": { sub: [], dub: [] },
         "HD-2": { sub: [], dub: [] },
         "HD-3": { sub: [], dub: [] },
       }
-      const probes = []
       for (const language of ["sub", "dub"]) {
         if (!languageAvailability[language]) continue
-        for (const provider of ["haiku", "kira", "naoka"]) {
-          probes.push({
-            server: "HD-3", language, provider,
-            url: "https://mikaza.buzz/embed/" + provider + "/ani/" + anilistId + "/" + episode + "/" + language,
-            referer: "https://mikaza.buzz/",
-          })
-        }
-        probes.push({
-          server: "HD-2", language, provider: null,
-          url: "https://aniembed.se/e/" + anilistId + "/" + episode + "?lang=" + language,
-          referer: "https://aniembed.se/",
-        })
-        probes.push({
-          server: "HD-1", language, provider: null,
-          url: "https://aniplayer.xyz/embeds/" + anilistId + "/" + episode + "/" + language,
-          referer: "https://aniplayer.xyz/",
-        })
+        // HD-1 (AniPlayer) and HD-2 (AniEmbed) use one embed per confirmed language.
+        providers["HD-1"][language].push("HD-1")
+        providers["HD-2"][language].push("HD-2")
+        // Mikaza exposes three browser embed routes; keep them as selectable fallbacks.
+        providers["HD-3"][language].push("haiku", "kira", "naoka")
       }
-      const checked = await Promise.all(probes.map(async (probe) => ({ ...probe, result: await probeEmbedAvailability(probe.url, probe.referer) })))
-      for (const probe of checked) {
-        if (!probe.result.available) continue
-        if (!providers[probe.server][probe.language].includes(probe.provider || probe.server)) {
-          providers[probe.server][probe.language].push(probe.provider || probe.server)
-        }
-      }
-      const available = { sub: [], dub: [] }
-      for (const server of ["HD-1", "HD-2", "HD-3"]) {
-        for (const language of ["sub", "dub"]) {
-          if (languageAvailability[language] && providers[server][language].length) available[language].push(server)
-        }
+      const available = {
+        sub: languageAvailability.sub ? ["HD-1", "HD-2", "HD-3"] : [],
+        dub: languageAvailability.dub ? ["HD-1", "HD-2", "HD-3"] : [],
       }
       return {
         anilistId, episode, available, providers, languageAvailability,
         checkedAt: new Date().toISOString(),
-        method: "aniweeb-episode-flags+embed-http-probe",
+        method: "aniweeb-episode-flags",
       }
     }, 5 * 60 * 1000)
     res.set("Cache-Control", "private, max-age=30")
