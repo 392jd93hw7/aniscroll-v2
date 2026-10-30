@@ -222,3 +222,11 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{ou
 .watch-episode-scroll.is-grid .watch-episode-eyebrow{font-size:11px}
 @media(max-width:600px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.watch-episode-scroll.is-grid .watch-episode-card{aspect-ratio:1/1;max-height:58px}.watch-episode-scroll.is-grid .watch-episode-eyebrow{font-size:10px}}
 @media(min-width:1500px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.watch-episode-scroll.is-grid .watch-episode-card{aspect-ratio:1/1;max-height:82px}}
+
+/* Extra-compact 1:1 episode number squares */
+.watch-episode-scroll.is-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+.watch-episode-scroll.is-grid .watch-episode-card{width:100%;height:auto;min-height:0;max-height:none;aspect-ratio:1/1;padding:0;border-radius:4px}
+.watch-episode-scroll.is-grid .watch-episode-meta{height:100%;width:100%;display:flex;align-items:center;justify-content:center}
+.watch-episode-scroll.is-grid .watch-episode-eyebrow{font-size:10px}
+@media(max-width:600px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:3px}.watch-episode-scroll.is-grid .watch-episode-card{aspect-ratio:1/1}.watch-episode-scroll.is-grid .watch-episode-eyebrow{font-size:9px}}
+@media(min-width:1500px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:5px}.watch-episode-scroll.is-grid .watch-episode-card{aspect-ratio:1/1}}
