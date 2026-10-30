@@ -7,7 +7,7 @@ export default function WatchPage() {
     volume, setVolume, autoplay, setAutoplay, controlsVisible, setControlsVisible,
     playerSettings, setPlayerSettings, fullscreen, toggleFullscreen, subtitles, setSubtitles,
     speed, setSpeed, quality, setQuality, audioTrack, setAudioTrack, streamServer,
-    setStreamServer, mikazaProvider, setMikazaProvider, embedError, setEmbedError, metadataLoading, notify, detail,
+    setStreamServer, mikazaProvider, setMikazaProvider, audioAvailability, audioAvailabilityLoading, audioAvailabilityError, embedError, setEmbedError, metadataLoading, notify, detail,
     info, duration, episodeCount, episodeTitles, kitsuEpisodes, history, saved, toggle,
     embedUrl, nextEpisode, watch, go, aniListMeta, aniListDetails, anime, isFilm,
     formatTime, Icon, Logo, watchPath
@@ -38,11 +38,24 @@ export default function WatchPage() {
   const genres = aniListDetails?.genres || selected.genres || [selected.genre].filter(Boolean)
   const poster = selected.image || selected.banner || ""
   const heroArtwork = selected.banner || selected.image || ""
-  const mikazaProviders = [
-    { id: "haiku", label: "Haiku", kind: "Primary" },
-    { id: "kira", label: "Kira", kind: "Fallback" },
-    { id: "naoka", label: "Naoka", kind: "Fallback" },
+  const availableSubServers: string[] = Array.isArray(audioAvailability?.available?.sub) ? audioAvailability.available.sub : []
+  const availableDubServers: string[] = Array.isArray(audioAvailability?.available?.dub) ? audioAvailability.available.dub : []
+  const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-1"]?.[audioTrack]) ? audioAvailability.providers["HD-1"][audioTrack] : []
+  const mikazaProviderDirectory = [
+    { id: "haiku", label: "Haiku" },
+    { id: "kira", label: "Kira" },
+    { id: "naoka", label: "Naoka" },
   ]
+  const mikazaProviders = mikazaProviderDirectory
+    .filter((provider) => availableMikazaIds.includes(provider.id))
+    .map((provider, index) => ({ ...provider, kind: index === 0 ? "Available" : "Fallback" }))
+  const selectServer = (server: string, language: "sub" | "dub") => {
+    const providerOptions = audioAvailability?.providers?.[server]?.[language] || []
+    if (server === "HD-1" && providerOptions.length) setMikazaProvider(providerOptions[0])
+    setStreamServer(server)
+    setAudioTrack(language)
+    setEmbedError(false)
+  }
   const tryNextMikazaProvider = () => {
     const currentIndex = mikazaProviders.findIndex((provider) => provider.id === mikazaProvider)
     const nextProvider = mikazaProviders[currentIndex + 1]
@@ -124,8 +137,9 @@ export default function WatchPage() {
                   <button aria-label="Close playback settings" onClick={() => setPlayerSettings(false)}><Icon name="close" size={18} /></button>
                 </div>
                 <label>Stream audio
-                  <select value={audioTrack} onChange={(event) => { setAudioTrack(event.target.value); setEmbedError(false) }}>
-                    <option value="sub">Sub</option><option value="dub">Dub</option>
+                  <select value={audioTrack} disabled={audioAvailabilityLoading || (!availableSubServers.length && !availableDubServers.length)} onChange={(event) => { const next = event.target.value as "sub" | "dub"; const servers = next === "sub" ? availableSubServers : availableDubServers; if (servers.length) selectServer(servers.includes(streamServer) ? streamServer : servers[0], next) }}>
+                    {availableSubServers.length > 0 && <option value="sub">Sub</option>}
+                    {availableDubServers.length > 0 && <option value="dub">Dub</option>}
                   </select>
                 </label>
                 <label>Subtitles
@@ -192,10 +206,23 @@ export default function WatchPage() {
               <span>PLAYER SOURCES</span>
             </div>
             <div className="watch-server-rows">
-              <div className="watch-server-group"><strong>SUB</strong>{["HD-1", "HD-2", "HD-3"].map((server) => <button key={"sub-" + server} disabled={server === "HD-3" && streamServer === "HD-3" && false} className={streamServer === server && audioTrack === "sub" ? "active" : ""} onClick={() => { setStreamServer(server); setAudioTrack("sub"); setEmbedError(false) }}>{server}</button>)}</div>
-              <div className="watch-server-group"><strong>DUB</strong>{["HD-1", "HD-2", "HD-3"].map((server) => <button key={"dub-" + server} className={streamServer === server && audioTrack === "dub" ? "active" : ""} onClick={() => { setStreamServer(server); setAudioTrack("dub"); setEmbedError(false) }}>{server}</button>)}</div>
+              {audioAvailabilityLoading ? (
+                <p className="watch-availability-message">Checking SUB and DUB availability for episode {episode}…</p>
+              ) : audioAvailabilityError ? (
+                <p className="watch-availability-message is-error">{audioAvailabilityError}</p>
+              ) : (
+                <>
+                  {availableSubServers.length > 0 && (
+                    <div className="watch-server-group"><strong>SUB</strong>{availableSubServers.map((server: string) => <button key={"sub-" + server} className={streamServer === server && audioTrack === "sub" ? "active" : ""} aria-pressed={streamServer === server && audioTrack === "sub"} onClick={() => selectServer(server, "sub")}>{server}</button>)}</div>
+                  )}
+                  {availableDubServers.length > 0 && (
+                    <div className="watch-server-group"><strong>DUB</strong>{availableDubServers.map((server: string) => <button key={"dub-" + server} className={streamServer === server && audioTrack === "dub" ? "active" : ""} aria-pressed={streamServer === server && audioTrack === "dub"} onClick={() => selectServer(server, "dub")}>{server}</button>)}</div>
+                  )}
+                  {!availableSubServers.length && !availableDubServers.length && <p className="watch-availability-message">No SUB or DUB streams were confirmed for this episode.</p>}
+                </>
+              )}
             </div>
-            {streamServer === "HD-1" && (
+            {streamServer === "HD-1" && mikazaProviders.length > 1 && (
               <div className="watch-mikaza-fallbacks">
                 <strong>HD-1 PROVIDER</strong>
                 <div>
@@ -205,12 +232,12 @@ export default function WatchPage() {
                     </button>
                   ))}
                 </div>
-                <span>Haiku is primary. Kira and Naoka are fallback embeds.</span>
-                <button className="watch-mikaza-next" onClick={tryNextMikazaProvider} disabled={mikazaProvider === "naoka"}>Try next fallback ↗</button>
+                <span>Only Mikaza providers that responded for this audio language are listed.</span>
+                <button className="watch-mikaza-next" onClick={tryNextMikazaProvider} disabled={mikazaProviders.findIndex((provider) => provider.id === mikazaProvider) >= mikazaProviders.length - 1}>Try next fallback ↗</button>
               </div>
             )}
-            {embedError && streamServer === "HD-1" && (
-              <p className="watch-mikaza-error" role="alert">The selected Mikaza embed could not be loaded. Try another provider above or switch to HD-2 / HD-3.</p>
+            {embedError && (
+              <p className="watch-mikaza-error" role="alert">The selected stream did not load. Choose another available provider or server.</p>
             )}
             <p className={embedError ? "watch-server-note is-error" : "watch-server-note"}>{embedError ? "This source may be unavailable. Try another server." : "Choose a source to load the selected audio track. Availability depends on the provider."}</p>
           </section>
