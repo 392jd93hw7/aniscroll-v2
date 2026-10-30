@@ -529,7 +529,7 @@ function App() {
     if (year !== "All years") params.set("year", year)
     if (seasonFilter !== "All seasons") params.set("season", seasonFilter)
     const requestTimer = window.setTimeout(() => {
-      void fetch("/api/anilist/anime?" + params.toString(), { cache: "no-store" })
+      void fetch("/api/catalog/anime?" + params.toString(), { cache: "no-store" })
         .then(async (response) => {
           const payload = await response.json().catch(() => ({}))
           if (!response.ok) throw new Error(payload.error || "Could not load anime from AniList")
