@@ -733,3 +733,21 @@ select { font-size: var(--type-small); min-height: 44px; border-radius: var(--ra
 .watch-open-provider { display:inline-flex; align-items:center; min-height:28px; padding:0 9px; border:1px solid #514264; border-radius:3px; color:#c5a8f5; font-size:9px; text-decoration:none; }
 .watch-open-provider:hover { border-color:#a17bd8; background:#21192c; color:#fff; }
 @media (max-width:560px) { .watch-server-footer { align-items:flex-start; flex-direction:column; } }
+
+/* AniList-only Home feed with Kitsu landscape hero artwork */
+.home-trending-hero { background-size:cover; background-position:center 43%; background-color:#09090b; }
+.home-trending-hero .hero-content { max-width:700px; }
+.home-trending-hero .hero-description { display:-webkit-box; overflow:hidden; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
+.home-trending-hero .hero-alt { font-size:16px; letter-spacing:3px; }
+.home-trending-hero.is-empty { background:radial-gradient(ellipse at 72% 34%,#33234d 0%,#14101e 36%,#09090b 76%); }
+.home-trending-empty { position:relative; max-width:760px; padding:210px 0 160px 4.5%; }
+.home-trending-empty .feature-label { margin-bottom:22px; }
+.home-trending-empty h1 { color:#fff; font-size:58px; line-height:1.08; letter-spacing:-2.7px; }
+.home-trending-empty p { max-width:480px; margin-top:15px; color:#b5adbf; font-size:13px; line-height:1.8; }
+.home-trending-content { min-height:260px; }
+.home-trending-content .section-heading { align-items:baseline; }
+.home-trending-content .section-heading h2 { display:inline; }
+.home-trending-message { padding:36px 0 55px; color:#aaa1b5; font-size:12px; }
+.home-trending-message.is-error { color:#e9a1a1; }
+@media (max-width:800px) { .home-trending-empty { padding:190px 5% 150px; } .home-trending-empty h1 { font-size:48px; } }
+@media (max-width:480px) { .home-trending-hero .hero-content { padding-top:270px; } .home-trending-hero .hero-alt { font-size:12px; letter-spacing:2px; } .home-trending-empty { padding:265px 5% 170px; } .home-trending-empty h1 { font-size:38px; letter-spacing:-1.5px; } .home-trending-empty p { font-size:11px; } }
