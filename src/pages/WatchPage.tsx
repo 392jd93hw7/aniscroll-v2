@@ -42,9 +42,9 @@ export default function WatchPage() {
   const availableDubServers: string[] = audioAvailability?.languageAvailability?.dub === true && Array.isArray(audioAvailability?.available?.dub) ? audioAvailability.available.dub : []
   const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-3"]?.[audioTrack]) ? audioAvailability.providers["HD-3"][audioTrack] : []
   const mikazaProviderDirectory = [
-    { id: "haiku", label: "Haiku" },
-    { id: "kira", label: "Kira" },
-    { id: "naoka", label: "Naoka" },
+    { id: "haiku", label: "Primary source" },
+    { id: "kira", label: "Backup source 1" },
+    { id: "naoka", label: "Backup source 2" },
   ]
   const mikazaProviders = mikazaProviderDirectory
     .filter((provider) => availableMikazaIds.includes(provider.id))
@@ -66,7 +66,7 @@ export default function WatchPage() {
     }
     setEmbedError(false)
     setMikazaProvider(nextProvider.id)
-    notify("Switched HD-3 to Mikaza " + nextProvider.label + ".")
+    notify("Switched to HD-3 " + nextProvider.label.toLowerCase() + ".")
   }
   const handleEmbedError = () => {
     if (streamServer === "HD-3") {
