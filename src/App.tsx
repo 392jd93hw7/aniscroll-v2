@@ -570,8 +570,12 @@ function App() {
         setMovieResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
         setMoviesHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
       })
-      .catch(() => {
-        if (active) { setMovieResults([]); setMoviesHasNextPage(false); setMoviesError(error instanceof Error ? error.message : "Could not load movies from AniList. Please try again.") }
+      .catch((error) => {
+        if (active) {
+          setMovieResults([])
+          setMoviesHasNextPage(false)
+          setMoviesError(error instanceof Error ? error.message : "Could not load movies from AniList. Please try again.")
+        }
       })
       .finally(() => { if (active) setMoviesLoading(false) })
     return () => { active = false }
