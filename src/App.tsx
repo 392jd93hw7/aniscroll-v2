@@ -512,7 +512,7 @@ function App() {
     return () => { active = false }
   }, [page])
   useEffect(() => {
-    const path = window.location.pathname.replace(/\\/+$/, "") || "/"
+    const path = window.location.pathname.replace(/\/+$/, "") || "/"
     const isDiscover = page === "Discover" && path === "/discover"
     const isMovies = page === "Movies" && (path === "/movie" || path === "/movies")
     if (!isDiscover && !isMovies) return
@@ -536,7 +536,7 @@ function App() {
 
   useEffect(() => {
     const handlePagePopState = () => {
-      const path = window.location.pathname.replace(/\\/+$/, "") || "/"
+      const path = window.location.pathname.replace(/\/+$/, "") || "/"
       const value = Number(new URLSearchParams(window.location.search).get("page") || 1)
       const safePage = Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1
       if (path === "/discover") setAnimePage(safePage)
