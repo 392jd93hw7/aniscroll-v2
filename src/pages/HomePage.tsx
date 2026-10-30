@@ -61,7 +61,7 @@ export default function HomePage() {
             <div className="film-kicker">
               ANILIST TRENDING · #{String(heroIndex + 1).padStart(2, "0")}
             </div>
-            <h1>{featured.title}</h1>
+            <h1 className={String(featured.title || "").length > 34 ? "hero-title-extra-long" : String(featured.title || "").length > 22 ? "hero-title-long" : ""}>{featured.title}</h1>
             {featured.altTitle && featured.altTitle !== featured.title && (
               <div className="hero-alt">{featured.altTitle}</div>
             )}
