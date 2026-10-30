@@ -75,7 +75,9 @@ async function probeEmbedAvailability(url, referer) {
         "episode not found", "episode unavailable", "not available in this language",
         "no source found", "no stream found", "stream unavailable",
         "video not found", "invalid episode", "content unavailable",
-        "dub not available", "sub not available",
+        "dub not available", "sub not available", "no video found",
+        "episode does not exist", "this video is unavailable", "playback error",
+        "just a moment", "verify you are human", "cf-chl-", "cloudflare ray id",
       ]
       const explicitFailure = unavailableMarkers.some((marker) => body.includes(marker))
       return { available: response.ok && !explicitFailure, status: response.status, checkedAt: Date.now() }
