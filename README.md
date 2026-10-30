@@ -22,6 +22,9 @@ Availability is determined by an HTTP response from each embed page plus basic u
 ## HD-3 Mikaza embed provider
 
 HD-3 uses Mikaza's AniList iframe route. The selected provider is `haiku` by default, with `kira` as the first fallback and `naoka` as the second fallback. URLs are formed as `https://mikaza.buzz/embed/{provider}/ani/{anilist_id}/{episode}/{lang}`, where `provider` is `kira`, `haiku`, or `naoka`, and `lang` is `sub` or `dub`. The watch page exposes all three provider choices while HD-3 is selected and advances to the next fallback when the iframe reports an error. HD-1 now uses the former HD-3 AniPlayer integration. HD-2 retains AniEmbed.
+## Anime directory pagination
+
+The `/anime` directory is AniList-backed and requests 30 anime per page from `/api/anilist/anime`. The API returns AniList `pageInfo` so Previous/Next are enabled from the actual `hasNextPage` value and the total result count is displayed. Title search, genre/tag selection, year, season, and sort are passed to the API; changing any filter resets the Anime directory to page 1. Standard AniList genres use `genre_in`, while categories represented as AniList tags (for example Isekai, Reincarnation, Seinen, and Time Travel) use `tag_in`. Discover and Movies retain their own listing behavior and pagination state.
 ## Home genre artwork
 
 The Home genre tiles load from `/api/anilist/genre-banners`. The backend queries AniList for a trending anime title in each displayed category using `genre_in`; the Isekai tile uses AniList's `tag_in` filter because Isekai is represented as a tag rather than a standard genre. Each chosen AniList ID is resolved through Kitsu's AniList mapping and the matching Kitsu `coverImage` is used as the tile background. A title-checked AniList banner/cover fallback is used only when Kitsu has no matching cover banner. The genre tile click still selects that genre and navigates to Discover. Results are cached for 12 hours.
