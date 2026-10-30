@@ -904,10 +904,10 @@ function App() {
 
   const embedUrl = aniListId
     ? streamServer === "HD-1"
-      ? "https://mikaza.buzz/embed/" + mikazaProvider + "/ani/" + aniListId + "/" + episode + "/" + audioTrack
+      ? "https://aniplayer.xyz/embeds/" + aniListId + "/" + episode + "/" + audioTrack
       : streamServer === "HD-2"
         ? "https://aniembed.se/e/" + aniListId + "/" + episode + "?lang=" + audioTrack
-        : "https://aniplayer.xyz/embeds/" + aniListId + "/" + episode + "/" + audioTrack
+        : "https://mikaza.buzz/embed/" + mikazaProvider + "/ani/" + aniListId + "/" + episode + "/" + audioTrack
     : ""
   const nextEpisode = () => {
     if (episode >= episodeCount) return
@@ -1150,7 +1150,7 @@ function App() {
         const chosenServer = servers.includes(streamServer) ? streamServer : servers[0]
         if (chosenServer && chosenServer !== streamServer) setStreamServer(chosenServer)
         if (chosenServer === "HD-1") {
-          const mikazaOptions = payload.providers?.["HD-1"]?.[chosenTrack] || []
+          const mikazaOptions = payload.providers?.["HD-3"]?.[chosenTrack] || []
           if (mikazaOptions.length && !mikazaOptions.includes(mikazaProvider)) setMikazaProvider(mikazaOptions[0])
         }
       })
