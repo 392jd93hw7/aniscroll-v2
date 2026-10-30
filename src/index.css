@@ -16,3 +16,13 @@
 .page-number-pagination .page-nav:disabled{opacity:.35;cursor:not-allowed}
 .page-number-pagination .page-ellipsis{padding:0 10px;color:#91a8c4}
 @media(max-width:600px){.page-number-pagination{gap:0;padding:5px}.page-number-pagination .page-number,.page-number-pagination .page-nav{min-width:34px;height:38px;padding:0 8px;font-size:13px}}
+
+
+/* Compact charcoal-and-purple pagination to match Aniscroll branding */
+.page-number-pagination{gap:3px;margin:28px 0 12px;padding:6px;background:rgba(18,16,27,.72);border:1px solid rgba(157,125,255,.16);border-radius:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.page-number-pagination .page-number,.page-number-pagination .page-nav{min-width:34px;height:36px;padding:0 9px;border-radius:8px;color:#b6a7e8;font-size:13px;transition:background .18s ease,color .18s ease,transform .18s ease}
+.page-number-pagination .page-number.active{background:linear-gradient(135deg,#8b5cf6,#a78bfa);color:#fff;border-radius:8px;box-shadow:0 3px 12px rgba(139,92,246,.2);font-weight:700}
+.page-number-pagination .page-number:hover:not(.active),.page-number-pagination .page-nav:hover:not(:disabled){background:rgba(139,92,246,.13);color:#e5ddff}
+.page-number-pagination .page-nav:disabled{opacity:.24}
+.page-number-pagination .page-ellipsis{padding:0 5px;color:#8273a9;font-size:12px}
+@media(max-width:600px){.page-number-pagination{gap:2px;padding:4px;margin-top:22px}.page-number-pagination .page-number,.page-number-pagination .page-nav{min-width:30px;height:32px;padding:0 7px;font-size:12px}}
