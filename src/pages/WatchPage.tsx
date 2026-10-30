@@ -43,16 +43,28 @@ export default function WatchPage() {
     { id: "haiku", label: "Haiku", kind: "Fallback" },
     { id: "naoka", label: "Naoka", kind: "Fallback" },
   ]
-  const handleEmbedError = () => {
-    setEmbedError(true)
-    if (streamServer !== "HD-1") return
+  const tryNextMikazaProvider = () => {
     const currentIndex = mikazaProviders.findIndex((provider) => provider.id === mikazaProvider)
     const nextProvider = mikazaProviders[currentIndex + 1]
-    if (nextProvider) {
-      notify("HD-1 unavailable. Trying Mikaza " + nextProvider.label + "…")
-      setMikazaProvider(nextProvider.id)
-      setEmbedError(false)
+    if (!nextProvider) {
+      setEmbedError(true)
+      notify("No more Mikaza fallback providers are available.")
+      return
     }
+    setEmbedError(false)
+    setMikazaProvider(nextProvider.id)
+    notify("Switched HD-1 to Mikaza " + nextProvider.label + ".")
+  }
+  const handleEmbedError = () => {
+    if (streamServer === "HD-1") {
+      const currentIndex = mikazaProviders.findIndex((provider) => provider.id === mikazaProvider)
+      const nextProvider = mikazaProviders[currentIndex + 1]
+      if (nextProvider) {
+        tryNextMikazaProvider()
+        return
+      }
+    }
+    setEmbedError(true)
   }
   const goToEpisode = (episodeNumber: number) => {
     if (typeof watch === "function") watch(selected, episodeNumber, season)
@@ -89,10 +101,9 @@ export default function WatchPage() {
                 title={selected.title + " episode " + episode}
                 src={embedUrl}
                 loading="eager"
-                sandbox="allow-scripts allow-same-origin allow-presentation"
-                allow="autoplay; fullscreen; picture-in-picture"
+                allow="autoplay; fullscreen; picture-in-picture; encrypted-media; clipboard-write"
                 allowFullScreen
-                referrerPolicy="no-referrer"
+                referrerPolicy="strict-origin-when-cross-origin"
                 onLoad={() => setEmbedError(false)}
                 onError={handleEmbedError}
               />
@@ -195,7 +206,12 @@ export default function WatchPage() {
                   ))}
                 </div>
                 <span>Kira is primary. Haiku and Naoka are fallback embeds.</span>
+                <button className="watch-mikaza-next" onClick={tryNextMikazaProvider} disabled={mikazaProvider === "naoka"}>Try next fallback ↗</button>
               </div>
+            )}
+            {embedError && streamServer === "HD-1" && (
+              <p className="watch-mikaza-error" role="alert">The selected Mikaza embed could not be loaded. Try another provider above or switch to HD-2 / HD-3.</p>
+            )}
             )}
             <p className={embedError ? "watch-server-note is-error" : "watch-server-note"}>{embedError ? "This source may be unavailable. Try another server." : "Choose a source to load the selected audio track. Availability depends on the provider."}</p>
           </section>
