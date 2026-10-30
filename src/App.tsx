@@ -12,7 +12,6 @@ import { hasSupabaseConfig, supabase } from "./supabase"
 import { AppPageProvider } from "./context/AppPageContext"
 import HomePage from "./pages/HomePage"
 import DiscoverPage from "./pages/DiscoverPage"
-import AnimePage from "./pages/AnimePage"
 import MoviesPage from "./pages/MoviesPage"
 import AnimeDetailsPage from "./pages/AnimeDetailsPage"
 import WatchPage from "./pages/WatchPage"
@@ -112,7 +111,7 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
 const PAGE_PATHS: Record<string, string> = {
-  Home: "/", Discover: "/discover", Anime: "/anime", Movies: "/movies",
+  Home: "/", Discover: "/discover", Movies: "/movies",
   Schedule: "/schedule", Watchlist: "/watchlist", Profile: "/profile",
   Admin: "/admin", Auth: "/sign-in",
 }
@@ -712,6 +711,15 @@ function App() {
   }, [])
   useEffect(() => {
     const path = routePath.replace(/\/+$/, "") || "/"
+    if (path === "/anime") {
+      if (lastAppliedRouteRef.current !== path) {
+        lastAppliedRouteRef.current = path
+        window.history.replaceState({}, "", "/discover")
+        setRoutePath("/discover")
+        setPage("Discover")
+      }
+      return
+    }
     const staticPage = PATH_PAGES[path]
     if (staticPage) {
       if (lastAppliedRouteRef.current !== path) {
@@ -1693,7 +1701,7 @@ function App() {
           <Logo />
         </button>
         <nav aria-label="Main navigation">
-          {["Home", "Discover", "Anime", "Movies", "Genres", "Schedule"].map(
+          {["Home", "Discover", "Movies", "Genres", "Schedule"].map(
             (n) => (
               <button
                 key={n}
@@ -1794,7 +1802,6 @@ function App() {
       <main id="main-content" tabIndex={-1}>
         {page === "Home" && <HomePage />}
         {page === "Discover" && <DiscoverPage />}
-        {page === "Anime" && <AnimePage />}
         {page === "Movies" && <MoviesPage />}
         {page === "Details" && <AnimeDetailsPage />}
         {page === "Player" && <WatchPage />}
