@@ -882,8 +882,14 @@ function App() {
       }
       setHistory((current) => {
         const local = current[selected.title]
-        // Prefer existing local progress when it is more recent than the cloud record.
-        if (local && local.season === cloudProgress.season && local.episode === cloudProgress.episode) return current
+        if (local) {
+          const localPosition = local.season * 10000 + local.episode
+          const cloudPosition = cloudProgress.season * 10000 + cloudProgress.episode
+          if (localPosition > cloudPosition) return current
+          if (localPosition === cloudPosition) {
+            return { ...current, [selected.title]: { ...cloudProgress, progress: Math.max(local.progress, cloudProgress.progress) } }
+          }
+        }
         return { ...current, [selected.title]: cloudProgress }
       })
     }
@@ -892,7 +898,7 @@ function App() {
   }, [hasSupabaseConfig, sessionUserId, selected.id, selected.title])
 
   useEffect(() => {
-    if (!hasSupabaseConfig || !supabase || !sessionUserId || !selected.id) return
+    if (page !== "Player" || !hasSupabaseConfig || !supabase || !sessionUserId || !selected.id) return
     const current = history[selected.title]
     if (!current) return
     const timer = window.setTimeout(() => {
