@@ -1,7 +1,35 @@
 import { useAppPageData } from "../context/AppPageContext"
 
 export default function BrowsePage() {
-  const { page, query, setQuery, genre, setGenre, seasonFilter, setSeasonFilter, season, loading, year, setYear, sort, setSort, compact, setCompact, movieResults, moviesPage, setMoviesPage, moviesHasNextPage, moviesLoading, moviesError, setMoviesReloadNonce, info, filtered, card, heading, Icon, anime, GENRE_OPTIONS } = useAppPageData()
+  const {
+    page, query, setQuery, genre, setGenre, seasonFilter, setSeasonFilter,
+    loading, year, setYear, sort, setSort, compact, setCompact,
+    movieResults, moviesPage, setMoviesPage, moviesHasNextPage, moviesLoading,
+    moviesError, setMoviesReloadNonce,
+    animePage, setAnimePage, animeHasNextPage, animeLoading, animeError,
+    animeTotal, setAnimeReloadNonce,
+    info, filtered, card, heading, Icon, anime, GENRE_OPTIONS,
+  } = useAppPageData() as any
+
+  const isAnimePage = page === "Anime"
+  const isMoviesPage = page === "Movies"
+  const currentPage = isAnimePage ? animePage : moviesPage
+  const currentLoading = loading || (isAnimePage && animeLoading) || (isMoviesPage && moviesLoading)
+  const currentError = isAnimePage ? animeError : isMoviesPage ? moviesError : ""
+  const hasNextPage = isAnimePage ? animeHasNextPage : moviesHasNextPage
+  const totalTitles = isAnimePage ? animeTotal : filtered.length
+  const resetPagination = () => {
+    if (isAnimePage) setAnimePage(1)
+    else resetPagination()
+  }
+  const changePage = (delta: number) => {
+    if (isAnimePage) setAnimePage((current: number) => Math.max(1, current + delta))
+    else setMoviesPage((current: number) => Math.max(1, current + delta))
+  }
+  const retryPage = () => {
+    if (isAnimePage) setAnimeReloadNonce((value: number) => value + 1)
+    else setMoviesReloadNonce((value: number) => value + 1)
+  }
   return (
           <div className="page-container">
             <span className="eyebrow">FIND YOUR NEXT OBSESSION</span>
@@ -22,10 +50,10 @@ export default function BrowsePage() {
                 type="search"
                 placeholder="Search your next favorite anime…"
                 value={query}
-                onChange={(e) => { setQuery(e.target.value); setMoviesPage(1) }}
+                onChange={(e) => { setQuery(e.target.value); resetPagination() }}
               />
               {query && (
-                <button aria-label="Clear search" onClick={() => { setQuery(""); setMoviesPage(1) }}>
+                <button aria-label="Clear search" onClick={() => { setQuery(""); resetPagination() }}>
                   <Icon name="close" />
                 </button>
               )}
@@ -33,7 +61,7 @@ export default function BrowsePage() {
             <div className="trending-search">
               <span>Trending searches</span>
               {["Solo Leveling", "Frieren", "Jujutsu Kaisen"].map((t) => (
-                <button onClick={() => { setQuery(t); setMoviesPage(1) }} key={t}>
+                <button onClick={() => { setQuery(t); resetPagination() }} key={t}>
                   {t} ↗
                 </button>
               ))}
@@ -44,7 +72,7 @@ export default function BrowsePage() {
                 <select
                   aria-label="Genre"
                   value={genre}
-                  onChange={(e) => { setGenre(e.target.value); setMoviesPage(1) }}
+                  onChange={(e) => { setGenre(e.target.value); resetPagination() }}
                 >
                   {["All genres", ...GENRE_OPTIONS].map((g) => (
                     <option key={g}>{g}</option>
@@ -56,7 +84,7 @@ export default function BrowsePage() {
                 <select
                   aria-label="Year"
                   value={year}
-                  onChange={(e) => { setYear(e.target.value); setMoviesPage(1) }}
+                  onChange={(e) => { setYear(e.target.value); resetPagination() }}
                 >
                   {["All years", "2025", "2024", "2023", "2022", "2016"].map(
                     (y) => (
@@ -70,7 +98,7 @@ export default function BrowsePage() {
                 <select
                   aria-label="Release season"
                   value={seasonFilter}
-                  onChange={(e) => { setSeasonFilter(e.target.value); setMoviesPage(1) }}
+                  onChange={(e) => { setSeasonFilter(e.target.value); resetPagination() }}
                 >
                   {["All seasons", "Winter", "Spring", "Summer", "Fall"].map(
                     (s) => (
@@ -84,7 +112,7 @@ export default function BrowsePage() {
                 <select
                   aria-label="Sort results"
                   value={sort}
-                  onChange={(e) => { setSort(e.target.value); setMoviesPage(1) }}
+                  onChange={(e) => { setSort(e.target.value); resetPagination() }}
                 >
                   {[
                     "Popularity",
@@ -103,7 +131,7 @@ export default function BrowsePage() {
                   setGenre("All genres")
                   setYear("All years")
                   setSeasonFilter("All seasons")
-                  setMoviesPage(1)
+                  resetPagination()
                 }}
               >
                 Reset filters
@@ -120,10 +148,10 @@ export default function BrowsePage() {
             <div className="results-heading">
               <h2>{query ? `Results for “${query}”` : page === "Movies" ? "Explore anime movies" : "Explore all anime"}</h2>
               <span aria-live="polite" role="status">
-{filtered.length}{" "}{page === "Movies" ? `titles · page ${moviesPage} · 30 per page` : "titles"}
+{page === "Anime" ? `${totalTitles.toLocaleString()} titles · page ${currentPage} · 30 per page` : page === "Movies" ? `${filtered.length} titles · page ${currentPage} · 30 per page` : `${filtered.length} titles`}
               </span>
             </div>
-            {(loading || (page === "Movies" && moviesLoading)) ? (
+            {currentLoading ? (
               <div
                 className="results-grid"
                 aria-label="Updating anime results"
@@ -142,22 +170,23 @@ export default function BrowsePage() {
                 {filtered.map(card)}
               </div>
             )}
-            {page === "Movies" && !moviesLoading && !moviesError && (
-              <div className="movies-pagination" aria-label="Movie pages">
-                <button className="button glass" disabled={moviesPage <= 1} onClick={() => setMoviesPage((current) => Math.max(1, current - 1))}>Previous</button>
-                <span>Page {moviesPage} <small>· 30 movies per page</small></span>
-                <button className="button glass" disabled={!moviesHasNextPage} onClick={() => setMoviesPage((current) => current + 1)}>Next</button>
+            {(page === "Anime" || page === "Movies") && !currentLoading && !currentError && (
+              <div className="movies-pagination" aria-label={page === "Anime" ? "Anime pages" : "Movie pages"}>
+                <button className="button glass" disabled={currentPage <= 1} onClick={() => changePage(-1)}>Previous</button>
+                <span>Page {currentPage} <small>· 30 {page === "Anime" ? "anime" : "movies"} per page</small></span>
+                <button className="button glass" disabled={!hasNextPage} onClick={() => changePage(1)}>Next</button>
               </div>
             )}
-            {!loading && page === "Movies" && moviesError && !movieResults.length && (
+            {!currentLoading && currentError && (
               <div className="empty-state" role="status">
                 <Icon name="info" size={38} />
-                <h2>Movies unavailable</h2>
-                <p>{moviesError}</p>
-                <button className="button purple" onClick={() => setMoviesReloadNonce((value) => value + 1)}>Try again</button>
+                <h2>{page === "Anime" ? "Anime unavailable" : "Movies unavailable"}</h2>
+                <p>{currentError}</p>
+                <button className="button purple" onClick={retryPage}>Try again</button>
               </div>
             )}
-            {!loading && !filtered.length && !(page === "Movies" && (moviesLoading || moviesError)) && (
+
+            {!currentLoading && !filtered.length && !currentError && (
               <div className="empty-state">
                 <Icon name="search" size={42} />
                 <h2>No stories found. Yet.</h2>
@@ -169,7 +198,7 @@ export default function BrowsePage() {
                     setGenre("All genres")
                     setYear("All years")
                     setSeasonFilter("All seasons")
-                    setMoviesPage(1)
+                    resetPagination()
                   }}
                 >
                   Explore all anime
