@@ -512,7 +512,7 @@ function App() {
     return () => { active = false }
   }, [page])
   useEffect(() => {
-    if (page !== "Anime") return
+    if (page !== "Anime" && page !== "Discover") return
     let active = true
     setAnimeLoading(true)
     setAnimeError("")
