@@ -598,6 +598,10 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
   }
 })
 
+app.get("/api/health", (_req, res) => {
+  res.set("Cache-Control", "no-store")
+  res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v1", playbackAvailabilityRoute: true })
+})
 app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
   const anilistId = Number(req.params.anilistId)
   const episode = Number(req.params.episode)
