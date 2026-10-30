@@ -14,7 +14,7 @@ export default function WatchPage() {
   } = useAppPageData() as any
 
   const [episodeSearch, setEpisodeSearch] = useState("")
-  const [episodeView, setEpisodeView] = useState<"list" | "grid">("list")
+  const episodeView = "grid" as const
   const [theaterMode, setTheaterMode] = useState(false)
   const [autoplayStart, setAutoplayStart] = useState(true)
   const [autoSkip, setAutoSkip] = useState(false)
