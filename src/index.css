@@ -214,3 +214,11 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{ou
 .watch-episode-scroll.is-grid .watch-episode-meta{height:100%;display:flex;align-items:center;justify-content:center}
 @media(max-width:600px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(5,minmax(0,1fr));grid-auto-rows:auto}.watch-episode-scroll.is-grid .watch-episode-card{height:auto;aspect-ratio:1/1}}
 @media(min-width:1500px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(6,minmax(0,1fr));grid-auto-rows:auto}.watch-episode-scroll.is-grid .watch-episode-card{height:auto;aspect-ratio:1/1}}
+
+/* Small square episode tiles: compact 5-column grid */
+.watch-episode-scroll.is-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;align-content:start}
+.watch-episode-scroll.is-grid .watch-episode-card{width:100%;height:auto;min-height:0;aspect-ratio:1/1;max-height:76px;padding:0;border-radius:5px}
+.watch-episode-scroll.is-grid .watch-episode-meta{height:100%;display:flex;align-items:center;justify-content:center}
+.watch-episode-scroll.is-grid .watch-episode-eyebrow{font-size:11px}
+@media(max-width:600px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}.watch-episode-scroll.is-grid .watch-episode-card{aspect-ratio:1/1;max-height:58px}.watch-episode-scroll.is-grid .watch-episode-eyebrow{font-size:10px}}
+@media(min-width:1500px){.watch-episode-scroll.is-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.watch-episode-scroll.is-grid .watch-episode-card{aspect-ratio:1/1;max-height:82px}}
