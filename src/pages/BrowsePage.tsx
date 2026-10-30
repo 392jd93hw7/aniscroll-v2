@@ -174,7 +174,7 @@ export default function BrowsePage() {
               <nav className="movies-pagination page-number-pagination" aria-label={isAnimePage ? "Anime pagination" : "Movie pagination"}>
                 <button className="page-nav" aria-label="Previous page" disabled={currentPage <= 1} onClick={() => changePage(-1)}>‹</button>
                 {(() => {
-                  const lastPage = isAnimePage ? Math.max(1, Math.ceil(totalTitles / 30)) : Math.max(currentPage, currentPage + (hasNextPage ? 1 : 0))
+                  const lastPage = isAnimePage ? Math.max(currentPage, currentPage + (hasNextPage ? 1 : 0)) : Math.max(currentPage, currentPage + (hasNextPage ? 1 : 0))
                   const pages = new Set<number>([1, lastPage, currentPage - 1, currentPage, currentPage + 1, currentPage + 2])
                   const visiblePages = [...pages].filter((n) => n >= 1 && n <= lastPage).sort((x, y) => x - y)
                   const items: Array<number | "ellipsis-left" | "ellipsis-right"> = []
