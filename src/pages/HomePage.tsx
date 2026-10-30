@@ -15,6 +15,23 @@ export default function HomePage() {
     detail,
     toggle,
     card,
+    history,
+    anime,
+    catalog,
+    heading,
+    setTab,
+    setSeasonFilter,
+    season,
+    setGenre,
+    airingSchedule,
+    scheduleLoading,
+    scheduleError,
+    notify,
+    normalizeAniList,
+    localDateKey,
+    FEATURED_GENRES,
+    storyFor,
+    runtimeFor,
     Icon,
   } = useAppPageData() as any
 
@@ -132,6 +149,180 @@ export default function HomePage() {
               {homeTrendingCatalog.map((item: any, index: number) => card(item, index))}
             </div>
           )}
+        </section>
+        <section>
+          {heading(
+            "Pick up where you left off",
+            "Continue Watching",
+            () => {
+              setTab("Currently Watching")
+              // Keep the original Home-to-watchlist navigation action.
+              window.location.assign("/watchlist")
+            },
+          )}
+          <div className="continue-row">
+            {[anime[1], anime[3], anime[0], anime[7]].map((a: any) => (
+              <article className="continue-card" key={a.title}>
+                <button
+                  className="continue-image"
+                  aria-label={`Resume ${a.title}`}
+                  onClick={() =>
+                    watch(
+                      a,
+                      history[a.title].episode,
+                      history[a.title].season,
+                    )
+                  }
+                >
+                  <img src={a.image} alt={a.title} />
+                  <span className="episode-badge">
+                    S{history[a.title].season} E{history[a.title].episode}
+                  </span>
+                  <span className="resume-play">
+                    <Icon name="play" size={22} />
+                  </span>
+                  <span className="time-left">
+                    {Math.ceil(
+                      ((100 - history[a.title].progress) *
+                        runtimeFor(a.title)) /
+                        6000,
+                    )}
+                    m left
+                  </span>
+                  <span className="progress-track">
+                    <span style={{ width: `${history[a.title].progress}%` }} />
+                  </span>
+                </button>
+                <button className="continue-title" onClick={() => detail(a)}>
+                  {a.title}
+                </button>
+                <p>
+                  {storyFor(a.title).episodes[history[a.title].episode - 1]}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          {heading("Trending now", "The anime everyone’s talking about")}
+          {homeTrendingLoading && !hasTrending ? (
+            <p className="home-trending-message">Loading trending anime from AniList…</p>
+          ) : homeTrendingError && !hasTrending ? (
+            <p className="home-trending-message is-error">{homeTrendingError}</p>
+          ) : (
+            <div className="poster-row" aria-label="AniList trending anime">
+              {homeTrendingCatalog.slice(0, 6).map((item: any, index: number) => card(item, index))}
+            </div>
+          )}
+        </section>
+
+        <section>
+          {heading(
+            "Popular this season",
+            "Fresh stories. New obsessions.",
+          )}
+          <div className="season-banner">
+            <div>
+              <span className="eyebrow">THE CURRENT COLLECTION</span>
+              <h2>
+                A new season.
+                <br />A whole new world.
+              </h2>
+              <p>
+                Meet your next favorite. Explore the stories
+                <br />
+                making this season unforgettable.
+              </p>
+              <button
+                className="button white"
+                onClick={() => {
+                  setSeasonFilter("All seasons" === season ? "All seasons" : season)
+                  // Open the anime browser using the existing navigation helper.
+                  window.location.assign("/discover")
+                }}
+              >
+                Explore the season <Icon name="chevron" size={17} />
+              </button>
+            </div>
+            <div className="season-posters">
+              {[catalog[3 % catalog.length], catalog[2 % catalog.length], catalog[7 % catalog.length]].map((a: any) => (
+                <img key={a.title} src={a.image} alt={a.title} />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section>
+          {heading(
+            "Made for your watchlist",
+            "Because you watched Jujutsu Kaisen",
+          )}
+          <div className="poster-row">
+            {[...catalog.slice(2, 6), anime[7], anime[6]].map((item: any, index: number) => card(item, index))}
+          </div>
+        </section>
+
+        <section>
+          {heading("Find your kind of adventure")}
+          <div className="genre-grid">
+            {FEATURED_GENRES.map((genre: string, index: number) => (
+              <button
+                key={genre}
+                onClick={() => {
+                  setGenre(genre)
+                  window.location.assign("/discover")
+                }}
+                style={{
+                  backgroundImage: `linear-gradient(90deg,rgba(20,12,35,.8),rgba(20,12,35,.3)),url(${catalog[index % catalog.length].image})`,
+                }}
+              >
+                <span>{genre}</span>
+                <Icon name="chevron" size={18} />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section>
+          {heading("Coming up next", "Never miss a moment", () => {
+            window.location.assign("/schedule")
+          })}
+          <div className="schedule-list">
+            {airingSchedule.slice(0, 3).map((release: any) => {
+              const animeItem = normalizeAniList(release.media)
+              const date = new Date(release.airingAt * 1000)
+              const dayLabel = localDateKey(date) === localDateKey(new Date())
+                ? "Today"
+                : date.toLocaleDateString(undefined, { weekday: "short" })
+              const time = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              return (
+                <div className="schedule-item" key={release.id}>
+                  <img src={animeItem.image} alt={animeItem.title} loading="lazy" />
+                  <div>
+                    <h3>{animeItem.title}</h3>
+                    <p>
+                      Episode {release.episode} <span>•</span> {dayLabel}, {time}
+                      {animeItem.isAdult ? " · 18+" : ""}
+                    </p>
+                  </div>
+                  <button
+                    aria-label={"Remind me about " + animeItem.title}
+                    onClick={() => notify("Reminder preference updated")}
+                  >
+                    <Icon name="bell" />
+                  </button>
+                </div>
+              )
+            })}
+            {!airingSchedule.length && (
+              <p className="muted">
+                {scheduleLoading
+                  ? "Loading upcoming releases from AniList…"
+                  : scheduleError || "No upcoming AniList releases are available right now."}
+              </p>
+            )}
+          </div>
         </section>
       </div>
     </>
