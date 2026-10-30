@@ -10,6 +10,7 @@ export type ViewingProgress = {
   episode: number
   season: number
   progress: number
+  lastWatchedAt?: string
 }
 
 // A deliberately small, static preview catalog—not a live streaming inventory.
