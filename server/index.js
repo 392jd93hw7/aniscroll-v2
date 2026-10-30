@@ -606,7 +606,9 @@ async function getAniweebEpisodeLanguages(anilistId, episode) {
   const payload = await getJson("https://api.aniweeb.net/episodes/" + anilistId)
   const episodes = Array.isArray(payload?.episodes)
     ? payload.episodes
-    : Array.isArray(payload?.results?.episodes) ? payload.results.episodes : []
+    : Array.isArray(payload?.data?.episodes)
+      ? payload.data.episodes
+      : Array.isArray(payload?.results?.episodes) ? payload.results.episodes : []
   const match = episodes.find((item) => Number(item?.number) === Number(episode))
   if (!match) throw new Error("Aniweeb returned no availability record for episode " + episode)
   if (typeof match.sub !== "boolean" || typeof match.dub !== "boolean") {
