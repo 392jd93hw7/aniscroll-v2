@@ -541,18 +541,73 @@ app.get("/api/catalog/anime", async (req, res) => {
           }
         }
       }`
-      const data = await queryAniList(query, variables)
-      return {
-        results: data.Page.media || [],
-        pageInfo: data.Page.pageInfo || { currentPage: page, hasNextPage: false, total: 0, perPage },
+      try {
+        const data = await queryAniList(query, variables)
+        return {
+          results: data.Page.media || [],
+          pageInfo: data.Page.pageInfo || { currentPage: page, hasNextPage: false, total: 0, perPage },
+        }
+      } catch (primaryError) {
+        // AniList occasionally rejects fields during schema changes. Retry once with a
+        // smaller, stable field selection, but do not hammer the API when rate-limited.
+        if ([429, 403].includes(Number(primaryError?.statusCode))) throw primaryError
+        const fallbackFields = `
+          id
+          idMal
+          isAdult
+          title { romaji english native }
+          description(asHtml: false)
+          coverImage { extraLarge large }
+          bannerImage
+          genres
+          tags { name }
+          season
+          seasonYear
+          startDate { year }
+          averageScore
+          popularity
+          status
+          episodes
+          format
+        `
+        const fallbackQuery = `query($page: Int!, $perPage: Int!, $search: String, $genres: [String], $tags: [String], $season: MediaSeason, $seasonYear: Int, $sort: [MediaSort]) {
+          Page(page: $page, perPage: $perPage) {
+            pageInfo { currentPage hasNextPage total perPage }
+            media(type: ANIME, search: $search, genre_in: $genres, tag_in: $tags, season: $season, seasonYear: $seasonYear, sort: $sort, isAdult: false) {
+              ${fallbackFields}
+            }
+          }
+        }`
+        const data = await queryAniList(fallbackQuery, variables)
+        return {
+          results: data.Page.media || [],
+          pageInfo: data.Page.pageInfo || { currentPage: page, hasNextPage: false, total: 0, perPage },
+        }
       }
     }, 90 * 1000)
     res.set("Cache-Control", "private, max-age=60")
     res.json({ ...result, page, perPage, source: "AniList", filters: { search, genre, year: yearValue, season, sort } })
   } catch (error) {
-    console.error("AniList anime page request failed:", error?.message || error)
-    const status = Number(error?.statusCode) === 429 ? 429 : 502
-    res.status(status).json({ error: "Could not load anime from AniList. Please try again." })
+    const upstreamStatus = Number(error?.statusCode || 0)
+    const retryAfterSeconds = Math.max(0, Number(error?.retryAfterSeconds || 0))
+    console.error("AniList anime page request failed:", {
+      message: error?.message || String(error),
+      statusCode: upstreamStatus || null,
+      retryAfterSeconds: retryAfterSeconds || null,
+    })
+    if (upstreamStatus === 429) {
+      const retrySeconds = retryAfterSeconds || 60
+      res.set("Retry-After", String(retrySeconds))
+      return res.status(503).json({ error: `AniList is temporarily rate-limiting requests. Try again in about ${retrySeconds} seconds.`, retryAfterSeconds: retrySeconds })
+    }
+    if (upstreamStatus === 403) {
+      return res.status(503).json({ error: "AniList temporarily refused the request. Please try again shortly." })
+    }
+    if (upstreamStatus === 400) {
+      return res.status(502).json({ error: "AniList rejected the catalog query. The API schema or filters may have changed." })
+    }
+    res.set("Retry-After", "15")
+    res.status(502).json({ error: "AniList catalog is temporarily unavailable. Please retry in a few seconds." })
   }
 })
 
