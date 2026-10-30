@@ -602,6 +602,18 @@ app.get("/api/health", (_req, res) => {
   res.set("Cache-Control", "no-store")
   res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v1", playbackAvailabilityRoute: true })
 })
+async function getAniweebEpisodeLanguages(anilistId, episode) {
+  const payload = await getJson("https://api.aniweeb.net/episodes/" + anilistId)
+  const episodes = Array.isArray(payload?.episodes)
+    ? payload.episodes
+    : Array.isArray(payload?.results?.episodes) ? payload.results.episodes : []
+  const match = episodes.find((item) => Number(item?.number) === Number(episode))
+  if (!match) throw new Error("Aniweeb returned no availability record for episode " + episode)
+  if (typeof match.sub !== "boolean" || typeof match.dub !== "boolean") {
+    throw new Error("Aniweeb episode response does not contain explicit sub and dub availability flags")
+  }
+  return { sub: match.sub, dub: match.dub, source: "aniweeb", episode: Number(match.number) }
+}
 app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
   const anilistId = Number(req.params.anilistId)
   const episode = Number(req.params.episode)
@@ -609,7 +621,10 @@ app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
     return res.status(400).json({ error: "A valid AniList ID and episode number are required." })
   }
   try {
-    const result = await cached("PLAYBACK_LANGUAGES:" + anilistId + ":" + episode, async () => {
+    // Use explicit per-episode sub/dub booleans as the language source of truth.
+    // Embed pages can return HTTP 200 even when the requested audio track is absent.
+    const result = await cached("PLAYBACK_LANGUAGES_V3:" + anilistId + ":" + episode, async () => {
+      const languageAvailability = await getAniweebEpisodeLanguages(anilistId, episode)
       const providers = {
         "HD-1": { sub: [], dub: [] },
         "HD-2": { sub: [], dub: [] },
@@ -617,6 +632,7 @@ app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
       }
       const probes = []
       for (const language of ["sub", "dub"]) {
+        if (!languageAvailability[language]) continue
         for (const provider of ["haiku", "kira", "naoka"]) {
           probes.push({
             server: "HD-1", language, provider,
@@ -645,16 +661,20 @@ app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
       const available = { sub: [], dub: [] }
       for (const server of ["HD-1", "HD-2", "HD-3"]) {
         for (const language of ["sub", "dub"]) {
-          if (providers[server][language].length) available[language].push(server)
+          if (languageAvailability[language] && providers[server][language].length) available[language].push(server)
         }
       }
-      return { anilistId, episode, available, providers, checkedAt: new Date().toISOString(), method: "embed-http-probe" }
-    }, 2 * 60 * 1000)
-    res.set("Cache-Control", "private, max-age=60")
+      return {
+        anilistId, episode, available, providers, languageAvailability,
+        checkedAt: new Date().toISOString(),
+        method: "aniweeb-episode-flags+embed-http-probe",
+      }
+    }, 5 * 60 * 1000)
+    res.set("Cache-Control", "private, max-age=30")
     res.json(result)
   } catch (error) {
     console.error("Playback availability check failed:", error?.message || error)
-    res.status(502).json({ error: "Unable to check playback language availability." })
+    res.status(502).json({ error: "Could not verify SUB/DUB availability for this episode. Unverified audio options are hidden." })
   }
 })
 app.get(["/profile", "/watchlist", "/admin", "/sign-in"], async (req, res, next) => {
