@@ -645,13 +645,6 @@ function App() {
       const userId = data.session?.user.id || null
       setSessionUserId(userId)
       setSignedIn(Boolean(userId))
-      if (userId) {
-        const { data: rows } = await supabase.from("watchlist").select("anime_title,status").eq("user_id", userId)
-        if (active && rows?.length) {
-          setSaved(rows.map((row) => String(row.anime_title)))
-          setStatuses(Object.fromEntries(rows.map((row) => [String(row.anime_title), row.status as LibraryStatus])))
-        }
-      }
     }
     void startSession()
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -661,6 +654,24 @@ function App() {
     })
     return () => { active = false; subscription.unsubscribe() }
   }, [])
+  useEffect(() => {
+    if (!hasSupabaseConfig || !supabase || !sessionUserId) return
+    let active = true
+    void (async () => {
+      const { data: rows, error } = await supabase
+        .from("watchlist")
+        .select("anime_title,status")
+        .eq("user_id", sessionUserId)
+      if (!active || error || !rows) return
+      const cloudTitles = rows.map((row) => String(row.anime_title)).filter(Boolean)
+      setSaved((current) => Array.from(new Set([...current, ...cloudTitles])))
+      setStatuses((current) => ({
+        ...current,
+        ...Object.fromEntries(rows.map((row) => [String(row.anime_title), row.status as LibraryStatus])),
+      }))
+    })()
+    return () => { active = false }
+  }, [hasSupabaseConfig, sessionUserId])
   useEffect(() => {
     if (!hasSupabaseConfig || !supabase) {
       setIsAdmin(false)
@@ -797,9 +808,14 @@ function App() {
         const payload = await fetch("/api/anilist/resolve?title=" + encodeURIComponent(a.title)).then((r) => r.json())
         id = Number(payload.anime?.id || 0)
       }
-      if (!id) return
-      if (remove) await supabase.from("watchlist").delete().eq("user_id", sessionUserId).eq("anilist_id", id)
-      else {
+      if (!id) {
+        notify("Saved locally; this title could not be matched to AniList for cloud sync.")
+        return
+      }
+      if (remove) {
+        const { error } = await supabase.from("watchlist").delete().eq("user_id", sessionUserId).eq("anilist_id", id)
+        if (error) notify("Removed locally; cloud removal could not complete.")
+      } else {
         const { error } = await supabase.from("watchlist").upsert({ user_id: sessionUserId, anilist_id: id, anime_title: a.title, cover_image: a.image, status }, { onConflict: "user_id,anilist_id" })
         if (error) notify("Saved locally; account sync could not complete.")
       }
