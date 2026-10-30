@@ -58,7 +58,7 @@ export default function HomePage() {
           // Prefer the Kitsu banner prepared in App.tsx; contain keeps the entire
           // landscape artwork visible instead of cropping it to fill the hero.
           backgroundImage: `url("${homeHeroBanner || featured.banner || featured.image}")`,
-          backgroundSize: "contain",
+          backgroundSize: "cover",
           backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
           backgroundColor: "#09090b",
