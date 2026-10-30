@@ -1083,14 +1083,21 @@ function App() {
     seasons: 1,
     episodes: ["Episode 1"],
   }
-  const rawEpisodeTitles: string[] = kitsuEpisodes.length
-    ? kitsuEpisodes.map((ep) => String(ep.title || ("Episode " + ep.number)))
-    : info.episodes
   const anilistStatus = String(aniListMeta?.status || "")
   const nextAiringEpisodeNumber = Number(aniListMeta?.nextAiringEpisode?.episode || 0)
   const nextAiringAt = Number(aniListMeta?.nextAiringEpisode?.airingAt || 0)
   const hasFutureAniListAiring = nextAiringEpisodeNumber > 0 && nextAiringAt * 1000 > Date.now()
   const announcedEpisodeCount = Number(aniListMeta?.episodes || 0)
+  const rawEpisodeTitles: string[] = kitsuEpisodes.length
+    ? kitsuEpisodes.map((ep, index) => String(ep.title || ("Episode " + (Number(ep.number) || index + 1))))
+    : [...info.episodes]
+  // Kitsu may return only a partial title list. AniList's episode count is the
+  // fallback source so the UI can still navigate past that partial list.
+  if (announcedEpisodeCount > rawEpisodeTitles.length && !isFilm(selected.title)) {
+    for (let number = rawEpisodeTitles.length + 1; number <= announcedEpisodeCount; number += 1) {
+      rawEpisodeTitles.push("Episode " + number)
+    }
+  }
   const datedKitsuEpisodes = kitsuEpisodes.filter((ep) =>
     ep.airdate && Number.isFinite(Date.parse(String(ep.airdate))),
   )
@@ -1122,8 +1129,11 @@ function App() {
   } else if (anilistStatus === "RELEASING" && datedKitsuEpisodes.length) {
     availableEpisodeLimit = airedKitsuEpisodeLimit
   } else if (anilistStatus === "RELEASING") {
-    // With no reliable schedule dates, do not expose the full announced count.
-    availableEpisodeLimit = Math.max(1, Math.min(rawEpisodeTitles.length, Number(history[selected.title]?.episode || 1)))
+    // If neither source provides dates, use AniList's known episode count when available.
+    // Otherwise retain the best-known Kitsu list/history limit.
+    availableEpisodeLimit = announcedEpisodeCount > 0
+      ? Math.min(rawEpisodeTitles.length, announcedEpisodeCount)
+      : Math.max(1, Math.min(rawEpisodeTitles.length, Number(history[selected.title]?.episode || rawEpisodeTitles.length)))
   }
   const episodeTitles = rawEpisodeTitles.slice(0, Math.max(0, Math.min(rawEpisodeTitles.length, availableEpisodeLimit)))
   const duration = runtimeFor(selected.title)
