@@ -64,7 +64,6 @@ export default function WatchPage() {
           >
             <div className="watch-player-brand">
               <span>ANISCROLL</span>
-              <span>THEATER</span>
             </div>
             <div className="watch-player-status">{quality} · {audioTrack.toUpperCase()}</div>
             {embedUrl ? (
