@@ -600,7 +600,7 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
 
 app.get("/api/health", (_req, res) => {
   res.set("Cache-Control", "no-store")
-  res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v3", playbackAvailabilityRoute: true })
+  res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v4", playbackAvailabilityRoute: true })
 })
 async function getAniweebEpisodeLanguages(anilistId, episode) {
   const payload = await cached("ANIWEEB_EPISODES:" + anilistId, async () => {
@@ -632,7 +632,7 @@ app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
   try {
     // Use explicit per-episode sub/dub booleans as the language source of truth.
     // Embed pages can return HTTP 200 even when the requested audio track is absent.
-    const result = await cached("PLAYBACK_LANGUAGES_V3:" + anilistId + ":" + episode, async () => {
+    const result = await cached("PLAYBACK_LANGUAGES_V4:" + anilistId + ":" + episode, async () => {
       const languageAvailability = await getAniweebEpisodeLanguages(anilistId, episode)
       const providers = {
         "HD-1": { sub: [], dub: [] },
