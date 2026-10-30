@@ -40,7 +40,7 @@ export default function WatchPage() {
   const heroArtwork = selected.banner || selected.image || ""
   const availableSubServers: string[] = audioAvailability?.languageAvailability?.sub === true && Array.isArray(audioAvailability?.available?.sub) ? audioAvailability.available.sub : []
   const availableDubServers: string[] = audioAvailability?.languageAvailability?.dub === true && Array.isArray(audioAvailability?.available?.dub) ? audioAvailability.available.dub : []
-  const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-3"]?.[audioTrack]) ? audioAvailability.providers["HD-1"][audioTrack] : []
+  const availableMikazaIds: string[] = Array.isArray(audioAvailability?.providers?.["HD-3"]?.[audioTrack]) ? audioAvailability.providers["HD-3"][audioTrack] : []
   const mikazaProviderDirectory = [
     { id: "haiku", label: "Haiku" },
     { id: "kira", label: "Kira" },
@@ -288,7 +288,7 @@ export default function WatchPage() {
                   onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return; event.preventDefault(); goToEpisode(number) }}
                 >
                   <div className="watch-episode-image"><img src={thumbnail} alt="" loading="lazy" /><span><Icon name="play" size={15} /></span></div>
-                  <div className="watch-episode-meta"><span className="watch-episode-eyebrow">EP {String(number).padStart(2, "0")}</span><h3>{item.title}</h3><div className="watch-episode-badges"><span><Icon name="captions" size={11} /> SUB</span><span><Icon name="mic" size={11} /> DUB</span></div></div>
+                  <div className="watch-episode-meta"><span className="watch-episode-eyebrow">EP {String(number).padStart(2, "0")}</span><h3>{item.title}</h3></div>
                   <small>{formatTime(duration)}</small>
                   {watched && <span className="watch-episode-progress">{Math.round(history[selected.title].progress)}% watched</span>}
                 </a>
