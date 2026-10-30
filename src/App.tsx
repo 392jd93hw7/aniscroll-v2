@@ -529,7 +529,7 @@ function App() {
 
   useEffect(() => {
     const handlePagePopState = () => {
-      if (window.location.pathname.replace(/\\/+$/, "") !== "/discover") return
+      if (window.location.pathname.replace(/\/+$/, "") !== "/discover") return
       const value = Number(new URLSearchParams(window.location.search).get("page") || 1)
       setAnimePage(Number.isSafeInteger(value) && value > 0 ? Math.min(value, 1000) : 1)
     }
