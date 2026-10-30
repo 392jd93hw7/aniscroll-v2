@@ -1202,7 +1202,8 @@ function App() {
       )
     }
   }
-  const isServerPagedBrowse = page === "Anime" || page === "Movies"
+  // Discover and Movies render the results fetched for the current server/API page.
+  const isServerPagedBrowse = page === "Discover" || page === "Anime" || page === "Movies"
   const filtered = (page === "Movies" ? movieResults : page === "Anime" ? animeResults : catalog)
     .filter(
       (a) =>
