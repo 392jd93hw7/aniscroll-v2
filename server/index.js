@@ -600,10 +600,17 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
 
 app.get("/api/health", (_req, res) => {
   res.set("Cache-Control", "no-store")
-  res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v1", playbackAvailabilityRoute: true })
+  res.json({ ok: true, service: "aniscroll-api", version: "playback-availability-v3", playbackAvailabilityRoute: true })
 })
 async function getAniweebEpisodeLanguages(anilistId, episode) {
-  const payload = await getJson("https://api.aniweeb.net/episodes/" + anilistId)
+  const payload = await cached("ANIWEEB_EPISODES:" + anilistId, async () => {
+    const response = await fetch("https://api.aniweeb.net/episodes/" + anilistId, {
+      headers: { Accept: "application/json", "User-Agent": "Aniscroll/1.0" },
+      signal: AbortSignal.timeout(12000),
+    })
+    if (!response.ok) throw new Error("Aniweeb episodes API returned " + response.status)
+    return response.json()
+  }, 5 * 60 * 1000)
   const episodes = Array.isArray(payload?.episodes)
     ? payload.episodes
     : Array.isArray(payload?.data?.episodes)
