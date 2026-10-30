@@ -39,8 +39,8 @@ export default function WatchPage() {
   const poster = selected.image || selected.banner || ""
   const heroArtwork = selected.banner || selected.image || ""
   const mikazaProviders = [
-    { id: "kira", label: "Kira", kind: "Primary" },
-    { id: "haiku", label: "Haiku", kind: "Fallback" },
+    { id: "haiku", label: "Haiku", kind: "Primary" },
+    { id: "kira", label: "Kira", kind: "Fallback" },
     { id: "naoka", label: "Naoka", kind: "Fallback" },
   ]
   const tryNextMikazaProvider = () => {
@@ -205,7 +205,7 @@ export default function WatchPage() {
                     </button>
                   ))}
                 </div>
-                <span>Kira is primary. Haiku and Naoka are fallback embeds.</span>
+                <span>Haiku is primary. Kira and Naoka are fallback embeds.</span>
                 <button className="watch-mikaza-next" onClick={tryNextMikazaProvider} disabled={mikazaProvider === "naoka"}>Try next fallback ↗</button>
               </div>
             )}
