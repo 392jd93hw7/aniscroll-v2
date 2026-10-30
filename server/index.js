@@ -474,6 +474,63 @@ app.get("/api/anilist/trending", async (_req, res) => {
   }
 })
 
+app.get("/api/anilist/anime", async (req, res) => {
+  const page = Number(req.query.page ?? 1)
+  const perPage = 30
+  const search = String(req.query.q || "").trim().slice(0, 100) || null
+  const genre = String(req.query.genre || "").trim().slice(0, 60) || null
+  const yearValue = req.query.year === "All years" ? null : Number(req.query.year)
+  const seasonInput = String(req.query.season || "").trim().toUpperCase()
+  const season = ["WINTER", "SPRING", "SUMMER", "FALL"].includes(seasonInput) ? seasonInput : null
+  const sortMap = {
+    "Popularity": "POPULARITY_DESC",
+    "Highest rated": "SCORE_DESC",
+    "Latest": "START_DATE_DESC",
+    "Alphabetical": "TITLE_ENGLISH",
+  }
+  const sort = sortMap[String(req.query.sort || "Popularity")] || "POPULARITY_DESC"
+  if (!Number.isSafeInteger(page) || page < 1 || page > 1000) {
+    return res.status(400).json({ error: "Page must be between 1 and 1000." })
+  }
+  if (req.query.year && req.query.year !== "All years" && (!Number.isSafeInteger(yearValue) || yearValue < 1910 || yearValue > 2100)) {
+    return res.status(400).json({ error: "Provide a valid anime release year." })
+  }
+  try {
+    const cacheKey = "ANILIST_ANIME_PAGE_30:" + JSON.stringify({ page, search, genre, yearValue, season, sort })
+    const result = await cached(cacheKey, async () => {
+      const variables = {
+        page,
+        perPage,
+        search,
+        genres: genre && genre !== "Isekai" ? [genre] : null,
+        tags: genre === "Isekai" ? ["Isekai"] : null,
+        season,
+        seasonYear: Number.isSafeInteger(yearValue) ? yearValue : null,
+        sort: [sort],
+      }
+      const query = `query($page: Int!, $perPage: Int!, $search: String, $genres: [String], $tags: [String], $season: MediaSeason, $seasonYear: Int, $sort: [MediaSort]) {
+        Page(page: $page, perPage: $perPage) {
+          pageInfo { currentPage hasNextPage total perPage }
+          media(type: ANIME, search: $search, genre_in: $genres, tag_in: $tags, season: $season, seasonYear: $seasonYear, sort: $sort, isAdult: false) {
+            ${MEDIA_FIELDS}
+          }
+        }
+      }`
+      const data = await queryAniList(query, variables)
+      return {
+        results: data.Page.media || [],
+        pageInfo: data.Page.pageInfo || { currentPage: page, hasNextPage: false, total: 0, perPage },
+      }
+    }, 90 * 1000)
+    res.set("Cache-Control", "private, max-age=60")
+    res.json({ ...result, page, perPage, source: "AniList", filters: { search, genre, year: yearValue, season, sort } })
+  } catch (error) {
+    console.error("AniList anime page request failed:", error?.message || error)
+    const status = Number(error?.statusCode) === 429 ? 429 : 502
+    res.status(status).json({ error: "Could not load anime from AniList. Please try again." })
+  }
+})
+
 app.get("/api/anilist/search", async (req, res) => {
   const search = String(req.query.q || "").trim().slice(0, 100)
   if (search.length < 2) return res.status(400).json({ error: "Search needs at least two characters" })
