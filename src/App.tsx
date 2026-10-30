@@ -362,6 +362,9 @@ function App() {
     [mikazaProvider, setMikazaProvider] = useState<"kira" | "haiku" | "naoka">("haiku"),
     [audioTrack, setAudioTrack] = useState<"sub" | "dub">("sub"),
     [embedError, setEmbedError] = useState(false),
+    [audioAvailability, setAudioAvailability] = useState<any>(null),
+    [audioAvailabilityLoading, setAudioAvailabilityLoading] = useState(false),
+    [audioAvailabilityError, setAudioAvailabilityError] = useState(""),
     [metadataLoading, setMetadataLoading] = useState(false),
     [sessionUserId, setSessionUserId] = useState<string | null>(null),
     [isAdmin, setIsAdmin] = useState(false),
@@ -1108,6 +1111,52 @@ function App() {
     </a>
   ))
   useEffect(() => {
+    if (page !== "Player") {
+      setAudioAvailability(null)
+      setAudioAvailabilityLoading(false)
+      setAudioAvailabilityError("")
+      return
+    }
+    const id = Number(aniListId || selected.id)
+    if (!Number.isSafeInteger(id) || id <= 0 || !episode) {
+      setAudioAvailability(null)
+      setAudioAvailabilityLoading(false)
+      setAudioAvailabilityError("AniList ID is unavailable, so server languages cannot be checked.")
+      return
+    }
+    let active = true
+    setAudioAvailability(null)
+    setAudioAvailabilityLoading(true)
+    setAudioAvailabilityError("")
+    void fetch("/api/playback/availability/" + id + "/" + episode, { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(payload.error || "Could not check audio availability")
+        return payload
+      })
+      .then((payload) => {
+        if (!active) return
+        setAudioAvailability(payload)
+        const subServers = Array.isArray(payload.available?.sub) ? payload.available.sub : []
+        const dubServers = Array.isArray(payload.available?.dub) ? payload.available.dub : []
+        const chosenTrack = (payload.available?.[audioTrack] || []).length ? audioTrack : subServers.length ? "sub" : dubServers.length ? "dub" : null
+        if (!chosenTrack) return
+        if (chosenTrack !== audioTrack) setAudioTrack(chosenTrack)
+        const servers = chosenTrack === "sub" ? subServers : dubServers
+        const chosenServer = servers.includes(streamServer) ? streamServer : servers[0]
+        if (chosenServer && chosenServer !== streamServer) setStreamServer(chosenServer)
+        if (chosenServer === "HD-1") {
+          const mikazaOptions = payload.providers?.["HD-1"]?.[chosenTrack] || []
+          if (mikazaOptions.length && !mikazaOptions.includes(mikazaProvider)) setMikazaProvider(mikazaOptions[0])
+        }
+      })
+      .catch((error) => {
+        if (active) setAudioAvailabilityError(error instanceof Error ? error.message : "Could not check audio availability")
+      })
+      .finally(() => { if (active) setAudioAvailabilityLoading(false) })
+    return () => { active = false }
+  }, [page, aniListId, selected.id, episode])
+  useEffect(() => {
     if (page !== "Player") return
     const canonicalPath = watchPath(selected.title, season, episode)
     if (window.location.pathname !== canonicalPath) writePath(canonicalPath, true)
@@ -1294,6 +1343,12 @@ function App() {
     setAudioTrack,
     embedError,
     setEmbedError,
+    audioAvailability,
+    setAudioAvailability,
+    audioAvailabilityLoading,
+    setAudioAvailabilityLoading,
+    audioAvailabilityError,
+    setAudioAvailabilityError,
     metadataLoading,
     setMetadataLoading,
     sessionUserId,
