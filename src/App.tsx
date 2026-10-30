@@ -353,6 +353,12 @@ function App() {
     [homeGenreBanners, setHomeGenreBanners] = useState<any[]>([]),
     [homeGenreLoading, setHomeGenreLoading] = useState(false),
     [homeGenreError, setHomeGenreError] = useState(""),
+    [animeResults, setAnimeResults] = useState<Anime[]>([]),
+    [animePage, setAnimePage] = useState(1),
+    [animeHasNextPage, setAnimeHasNextPage] = useState(false),
+    [animeLoading, setAnimeLoading] = useState(false),
+    [animeError, setAnimeError] = useState(""),
+    [animeReloadNonce, setAnimeReloadNonce] = useState(0),
     [movieResults, setMovieResults] = useState<Anime[]>([]),
     [moviesPage, setMoviesPage] = useState(1),
     [moviesHasNextPage, setMoviesHasNextPage] = useState(false),
@@ -510,6 +516,38 @@ function App() {
       .finally(() => { if (active) setHomeTrendingLoading(false) })
     return () => { active = false }
   }, [page])
+  useEffect(() => {
+    if (page !== "Anime") return
+    let active = true
+    setAnimeLoading(true)
+    setAnimeError("")
+    const params = new URLSearchParams({ page: String(animePage), sort })
+    const term = query.trim()
+    if (term) params.set("q", term)
+    if (genre !== "All genres") params.set("genre", genre)
+    if (year !== "All years") params.set("year", year)
+    if (seasonFilter !== "All seasons") params.set("season", seasonFilter)
+    void fetch("/api/anilist/anime?" + params.toString(), { cache: "no-store" })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(payload.error || "Could not load anime from AniList")
+        return payload
+      })
+      .then((payload) => {
+        if (!active) return
+        setAnimeResults(Array.isArray(payload.results) ? payload.results.map(normalizeAniList) : [])
+        setAnimeHasNextPage(Boolean(payload.pageInfo?.hasNextPage))
+      })
+      .catch((error) => {
+        if (!active) return
+        setAnimeResults([])
+        setAnimeHasNextPage(false)
+        setAnimeError(error instanceof Error ? error.message : "Could not load anime from AniList. Please try again.")
+      })
+      .finally(() => { if (active) setAnimeLoading(false) })
+    return () => { active = false }
+  }, [page, query, genre, year, seasonFilter, sort, animePage, animeReloadNonce])
+
   useEffect(() => {
     if (page !== "Movies") return
     let active = true
@@ -850,10 +888,11 @@ function App() {
     }
   }, [menu])
   useEffect(() => {
+    if (page === "Anime" || page === "Movies") return
     setLoading(true)
     const id = window.setTimeout(() => setLoading(false), 180)
     return () => window.clearTimeout(id)
-  }, [query, genre, year, seasonFilter])
+  }, [page, query, genre, year, seasonFilter])
   useEffect(() => {
     if (page !== "Player") return
     const handler = (e: KeyboardEvent) => {
@@ -1029,17 +1068,18 @@ function App() {
       )
     }
   }
-  const filtered = (page === "Movies" ? movieResults : catalog)
+  const isServerPagedBrowse = page === "Anime" || page === "Movies"
+  const filtered = (page === "Movies" ? movieResults : page === "Anime" ? animeResults : catalog)
     .filter(
       (a) =>
-        (page === "Movies" || a.title.toLowerCase().includes(query.toLowerCase())) &&
-        (genre === "All genres" || a.genre === genre || a.genres?.includes(genre) || a.tags?.includes(genre)) &&
-        (year === "All years" || String(a.year) === year) &&
-        (seasonFilter === "All seasons" ||
+        (isServerPagedBrowse || a.title.toLowerCase().includes(query.toLowerCase())) &&
+        (isServerPagedBrowse || genre === "All genres" || a.genre === genre || a.genres?.includes(genre) || a.tags?.includes(genre)) &&
+        (isServerPagedBrowse || year === "All years" || String(a.year) === year) &&
+        (isServerPagedBrowse || seasonFilter === "All seasons" ||
           (storyFor(a.title)?.season || "All") === seasonFilter),
     )
     .sort((a, b) =>
-      sort === "Highest rated"
+      isServerPagedBrowse ? 0 : sort === "Highest rated"
         ? Number(b.score) - Number(a.score)
         : sort === "Latest"
           ? b.year - a.year
@@ -1424,6 +1464,18 @@ function App() {
     homeGenreError,
     homeHeroItems,
     homeHeroBanner,
+    animeResults,
+    setAnimeResults,
+    animePage,
+    setAnimePage,
+    animeHasNextPage,
+    setAnimeHasNextPage,
+    animeLoading,
+    setAnimeLoading,
+    animeError,
+    setAnimeError,
+    animeReloadNonce,
+    setAnimeReloadNonce,
     movieResults,
     setMovieResults,
     moviesPage,
