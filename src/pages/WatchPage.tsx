@@ -9,13 +9,14 @@ export default function WatchPage() {
     speed, setSpeed, quality, setQuality, audioTrack, setAudioTrack, streamServer,
     setStreamServer, embedError, setEmbedError, metadataLoading, notify, detail,
     info, duration, episodeCount, episodeTitles, kitsuEpisodes, history, saved, toggle,
-    embedUrl, nextEpisode, watch, aniListMeta, aniListDetails, anime, isFilm,
+    embedUrl, nextEpisode, watch, go, aniListMeta, aniListDetails, anime, isFilm,
     formatTime, Icon, Logo, watchPath
   } = useAppPageData() as any
 
   const [episodeSearch, setEpisodeSearch] = useState("")
   const [episodeView, setEpisodeView] = useState<"list" | "grid">("list")
   const [theaterMode, setTheaterMode] = useState(false)
+  const [autoplayStart, setAutoplayStart] = useState(true)
   const [autoSkip, setAutoSkip] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [readMore, setReadMore] = useState(false)
@@ -44,7 +45,7 @@ export default function WatchPage() {
   return (
     <div className="watch-page-shell">
       <nav className="watch-breadcrumbs" aria-label="Breadcrumb">
-        <button onClick={() => detail(selected)} className="watch-crumb-home">Home</button>
+        <button onClick={() => go("Home")} className="watch-crumb-home">Home</button>
         <span>/</span>
         <button onClick={() => detail(selected)}>{selected.title}</button>
         <span>/</span>
@@ -149,7 +150,7 @@ export default function WatchPage() {
                 <button className={shortcutsOpen ? "is-on" : ""} onClick={() => setShortcutsOpen(!shortcutsOpen)}><Icon name="keyboard" size={14} /> Shortcuts</button>
                 {shortcutsOpen && <div className="watch-shortcuts-popover"><strong>Keyboard shortcuts</strong><span><kbd>Space</kbd> Play / pause</span><span><kbd>←</kbd> Back 5 seconds</span><span><kbd>→</kbd> Forward 5 seconds</span><span><kbd>F</kbd> Fullscreen</span></div>}
               </div>
-              <label className="watch-toggle"><input type="checkbox" checked={autoplay} onChange={(event) => setAutoplay(event.target.checked)} /><span /> Autoplay</label>
+              <label className="watch-toggle"><input type="checkbox" checked={autoplayStart} onChange={(event) => { setAutoplayStart(event.target.checked); setPlaying(event.target.checked) }} /><span /> Autoplay</label>
               <label className="watch-toggle"><input type="checkbox" checked={autoplay} onChange={(event) => setAutoplay(event.target.checked)} /><span /> Auto next</label>
               <label className="watch-toggle"><input type="checkbox" checked={autoSkip} onChange={(event) => setAutoSkip(event.target.checked)} /><span /> Auto skip</label>
             </div>
