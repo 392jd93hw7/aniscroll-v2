@@ -32,12 +32,18 @@ export default function HomePage() {
     normalizeAniList,
     localDateKey,
     FEATURED_GENRES,
+    homeGenreBanners,
+    homeGenreLoading,
+    homeGenreError,
     storyFor,
     runtimeFor,
     Icon,
   } = useAppPageData() as any
 
   const hasTrending = Array.isArray(homeTrendingCatalog) && homeTrendingCatalog.length > 0
+  const genreBannerMap = new Map<string, any>(
+    (Array.isArray(homeGenreBanners) ? homeGenreBanners : []).map((item: any) => [item.genre, item]),
+  )
   const heroIndex = Math.min(slide, Math.max(0, homeHeroItems.length - 1))
   const featured = homeHeroItems[heroIndex] || hero
   const genres = Array.isArray(featured?.genres) && featured.genres.length
@@ -248,21 +254,33 @@ export default function HomePage() {
         <section>
           {heading("Find your kind of adventure")}
           <div className="genre-grid">
-            {FEATURED_GENRES.map((genre: string, index: number) => (
-              <button
-                key={genre}
-                onClick={() => {
-                  setGenre(genre)
-                  go("Discover")
-                }}
-                style={{
-                  backgroundImage: `linear-gradient(90deg,rgba(20,12,35,.8),rgba(20,12,35,.3)),url(${catalog[index % catalog.length].image})`,
-                }}
-              >
-                <span>{genre}</span>
-                <Icon name="chevron" size={18} />
-              </button>
-            ))}
+            {FEATURED_GENRES.map((genre: string) => {
+              const animeForGenre = genreBannerMap.get(genre)
+              const banner = animeForGenre?.banner || animeForGenre?.image || null
+              return (
+                <button
+                  key={genre}
+                  onClick={() => {
+                    setGenre(genre)
+                    go("Discover")
+                  }}
+                  title={animeForGenre?.title
+                    ? `${genre} anime: ${animeForGenre.title} · ${animeForGenre.imageSource || "AniList artwork"}`
+                    : `Explore ${genre} anime`}
+                  aria-label={`Explore ${genre} anime`}
+                  style={{
+                    backgroundImage: banner
+                      ? `linear-gradient(90deg,rgba(20,12,35,.82),rgba(20,12,35,.28)),url("${banner}")`
+                      : "linear-gradient(135deg,#302342,#17151f 70%)",
+                    backgroundPosition: "center",
+                    backgroundSize: "cover",
+                  }}
+                >
+                  <span>{genre}</span>
+                  <Icon name="chevron" size={18} />
+                </button>
+              )
+            })}
           </div>
         </section>
 
