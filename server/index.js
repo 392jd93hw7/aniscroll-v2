@@ -377,10 +377,16 @@ app.get("/api/anilist/movies", async (req, res) => {
 })
 app.get("/api/anilist/trending", async (_req, res) => {
   try {
-    const results = await queryAniListMedia({ perPage: 24, sort: ["TRENDING_DESC", "POPULARITY_DESC"] })
-    res.json({ results })
-  } catch {
-    res.status(502).json({ error: "AniList is temporarily unavailable" })
+    const results = await queryAniListMedia({ perPage: 24, sort: ["TRENDING_DESC"] })
+    results.sort((a, b) =>
+      Number(b.trending || 0) - Number(a.trending || 0) ||
+      Number(b.popularity || 0) - Number(a.popularity || 0)
+    )
+    res.set("Cache-Control", "public, max-age=300")
+    res.json({ results, source: "AniList", sort: "TRENDING_DESC" })
+  } catch (error) {
+    console.error("AniList trending feed failed:", error?.message || error)
+    res.status(502).json({ error: "AniList trending anime is temporarily unavailable" })
   }
 })
 
