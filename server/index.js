@@ -812,32 +812,33 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
       episodesUrl.searchParams.set("filter[mediaType]", "Anime")
       episodesUrl.searchParams.set("filter[mediaId]", String(record.id))
       episodesUrl.searchParams.set("page[limit]", "20")
-      episodesUrl.searchParams.set("page[offset]", "0")
       episodesUrl.searchParams.set("sort", "number")
       try {
-        // Kitsu paginates episode lists; follow its next links so long-running anime
-        // aren't silently truncated to the first 20 episodes.
+        // Walk offsets explicitly instead of relying on Kitsu's optional next link.
+        // Some responses omit links.next even when another page exists.
         const allEpisodes = []
-        let nextUrl = episodesUrl.toString()
-        const seenUrls = new Set()
-        while (nextUrl && allEpisodes.length < 2000 && !seenUrls.has(nextUrl)) {
-          seenUrls.add(nextUrl)
-          const payload = await getJson(nextUrl)
-          if (!Array.isArray(payload.data)) break
-          allEpisodes.push(...payload.data)
-          const next = payload.links?.next
-          if (!next || !payload.data.length) break
-          nextUrl = new URL(next, KITSU_URL + "/").toString()
+        const seenIds = new Set()
+        for (let offset = 0; offset < 2000; offset += 20) {
+          const pageUrl = new URL(episodesUrl)
+          pageUrl.searchParams.set("page[offset]", String(offset))
+          const payload = await getJson(pageUrl.toString())
+          const page = Array.isArray(payload.data) ? payload.data : []
+          if (!page.length) break
+          for (const ep of page) {
+            const id = String(ep.id || "")
+            if (id && !seenIds.has(id)) {
+              seenIds.add(id)
+              allEpisodes.push(ep)
+            }
+          }
+          if (page.length < 20) break
         }
-        const uniqueEpisodes = [...new Map(allEpisodes.map((ep) => [String(ep.id), ep])).values()]
-        uniqueEpisodes.sort((a, b) => {
+        allEpisodes.sort((a, b) => {
           const an = Number(a.attributes?.number ?? a.attributes?.relativeNumber ?? 0)
           const bn = Number(b.attributes?.number ?? b.attributes?.relativeNumber ?? 0)
           return an - bn
         })
-        return { anime, episodes: uniqueEpisodes.map((ep) => normalizeKitsuEpisode(ep, anime.poster || anime.banner)) }
-      } catch { return { anime, episodes: [] } }
-    }, 30 * 60 * 1000)
+        return { anime, episodes: allEpisodes.map((ep) => normalizeKitsuEpisode(ep, anime.poster || anime.banner)) }    }, 30 * 60 * 1000)
     res.json(result)
   } catch {
     res.json({ anime: null, episodes: [], warning: "Kitsu metadata is temporarily unavailable" })
