@@ -42,7 +42,7 @@ export default function HomePage() {
 
   const hasTrending = Array.isArray(homeTrendingCatalog) && homeTrendingCatalog.length > 0
   const genreBannerMap = new Map<string, any>(
-    (Array.isArray(homeGenreBanners) ? homeGenreBanners : []).map((item: any) => [item.genre, item]),
+    (Array.isArray(homeGenreBanners) ? homeGenreBanners : []).map((item: any) => [String(item.genre), item] as [string, any]),
   )
   const heroIndex = Math.min(slide, Math.max(0, homeHeroItems.length - 1))
   const featured = homeHeroItems[heroIndex] || hero
