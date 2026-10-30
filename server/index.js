@@ -57,6 +57,33 @@ async function getJson(url) {
   })
 }
 
+async function probeEmbedAvailability(url, referer) {
+  return cached("EMBED_AVAILABILITY:" + url, async () => {
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+          "User-Agent": "Mozilla/5.0 (compatible; Aniscroll/1.0)",
+          Referer: referer,
+        },
+        redirect: "follow",
+        signal: AbortSignal.timeout(8000),
+      })
+      const body = (await response.text()).slice(0, 160000).toLowerCase()
+      const unavailableMarkers = [
+        "episode not found", "episode unavailable", "not available in this language",
+        "no source found", "no stream found", "stream unavailable",
+        "video not found", "invalid episode", "content unavailable",
+        "dub not available", "sub not available",
+      ]
+      const explicitFailure = unavailableMarkers.some((marker) => body.includes(marker))
+      return { available: response.ok && !explicitFailure, status: response.status, checkedAt: Date.now() }
+    } catch (error) {
+      return { available: false, status: 0, error: String(error?.message || "Provider request failed"), checkedAt: Date.now() }
+    }
+  }, 2 * 60 * 1000)
+}
 async function queryAniList(query, variables = {}) {
   return cached("ANI:" + JSON.stringify({ query, variables }), async () => {
     const response = await fetch(ANILIST_URL, {
@@ -569,6 +596,61 @@ app.get("/api/kitsu/:anilistId", async (req, res) => {
   }
 })
 
+app.get("/api/playback/availability/:anilistId/:episode", async (req, res) => {
+  const anilistId = Number(req.params.anilistId)
+  const episode = Number(req.params.episode)
+  if (!Number.isSafeInteger(anilistId) || anilistId <= 0 || !Number.isSafeInteger(episode) || episode <= 0 || episode > 2000) {
+    return res.status(400).json({ error: "A valid AniList ID and episode number are required." })
+  }
+  try {
+    const result = await cached("PLAYBACK_LANGUAGES:" + anilistId + ":" + episode, async () => {
+      const providers = {
+        "HD-1": { sub: [], dub: [] },
+        "HD-2": { sub: [], dub: [] },
+        "HD-3": { sub: [], dub: [] },
+      }
+      const probes = []
+      for (const language of ["sub", "dub"]) {
+        for (const provider of ["haiku", "kira", "naoka"]) {
+          probes.push({
+            server: "HD-1", language, provider,
+            url: "https://mikaza.buzz/embed/" + provider + "/ani/" + anilistId + "/" + episode + "/" + language,
+            referer: "https://mikaza.buzz/",
+          })
+        }
+        probes.push({
+          server: "HD-2", language, provider: null,
+          url: "https://aniembed.se/e/" + anilistId + "/" + episode + "?lang=" + language,
+          referer: "https://aniembed.se/",
+        })
+        probes.push({
+          server: "HD-3", language, provider: null,
+          url: "https://aniplayer.xyz/embeds/" + anilistId + "/" + episode + "/" + language,
+          referer: "https://aniplayer.xyz/",
+        })
+      }
+      const checked = await Promise.all(probes.map(async (probe) => ({ ...probe, result: await probeEmbedAvailability(probe.url, probe.referer) })))
+      for (const probe of checked) {
+        if (!probe.result.available) continue
+        if (!providers[probe.server][probe.language].includes(probe.provider || probe.server)) {
+          providers[probe.server][probe.language].push(probe.provider || probe.server)
+        }
+      }
+      const available = { sub: [], dub: [] }
+      for (const server of ["HD-1", "HD-2", "HD-3"]) {
+        for (const language of ["sub", "dub"]) {
+          if (providers[server][language].length) available[language].push(server)
+        }
+      }
+      return { anilistId, episode, available, providers, checkedAt: new Date().toISOString(), method: "embed-http-probe" }
+    }, 2 * 60 * 1000)
+    res.set("Cache-Control", "private, max-age=60")
+    res.json(result)
+  } catch (error) {
+    console.error("Playback availability check failed:", error?.message || error)
+    res.status(502).json({ error: "Unable to check playback language availability." })
+  }
+})
 app.get(["/profile", "/watchlist", "/admin", "/sign-in"], async (req, res, next) => {
   try {
     const html = await readFile(path.join(DIST, "index.html"), "utf8")
