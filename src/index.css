@@ -98,3 +98,105 @@ button:focus-visible,a:focus-visible,select:focus-visible,input:focus-visible{ou
   .poster-hover{display:none}
   .continue-image:hover img,.poster:hover img{transform:none}
 }
+
+
+/* Episode grid: compact numbered tiles with Aniscroll's purple accent */
+.watch-episode-scroll.is-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:6px;
+  align-content:start;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:2px 1px 8px;
+  scrollbar-color:#70549c #17131f;
+  scrollbar-width:thin;
+}
+.watch-episode-scroll.is-grid .watch-episode-card{
+  min-width:0;
+  min-height:36px;
+  aspect-ratio:1.35;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  padding:6px 3px;
+  border:1px solid #25212e;
+  border-radius:5px;
+  background:#17151e;
+  color:#b9a9db;
+  text-decoration:none;
+  overflow:hidden;
+  transition:background .16s ease,border-color .16s ease,color .16s ease;
+}
+.watch-episode-scroll.is-grid .watch-episode-card:hover{
+  background:#282036;
+  border-color:#7251a5;
+  color:#eee5ff;
+}
+.watch-episode-scroll.is-grid .watch-episode-card.is-current{
+  background:#8b5cf6;
+  border-color:#a78bfa;
+  color:#fff;
+  box-shadow:0 2px 10px #8b5cf633;
+}
+.watch-episode-scroll.is-grid .watch-episode-card.is-watched:not(.is-current){
+  background:#211b2c;
+  border-color:#4d3b69;
+  color:#d0b8ff;
+}
+.watch-episode-scroll.is-grid .watch-episode-image,
+.watch-episode-scroll.is-grid .watch-episode-card>small,
+.watch-episode-scroll.is-grid .watch-episode-progress{
+  display:none;
+}
+.watch-episode-scroll.is-grid .watch-episode-meta{
+  min-width:0;
+  width:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.watch-episode-scroll.is-grid .watch-episode-eyebrow{
+  font-size:0;
+  line-height:1;
+  font-weight:650;
+  color:inherit;
+}
+.watch-episode-scroll.is-grid .watch-episode-eyebrow::before{
+  content:attr(data-episode);
+}
+.watch-episode-scroll.is-grid .watch-episode-eyebrow{
+  font-size:0;
+}
+.watch-episode-scroll.is-grid .watch-episode-eyebrow::after{
+  content:"";
+}
+.watch-episode-scroll.is-grid .watch-episode-meta h3{
+  display:none;
+}
+/* Number comes from the existing EP badge text, so no content changes are needed. */
+.watch-episode-scroll.is-grid .watch-episode-eyebrow{
+  font-size:12px;
+}
+.watch-episode-scroll.is-grid .watch-episode-card:focus-visible{
+  outline:2px solid #c4b5fd;
+  outline-offset:2px;
+}
+.watch-view-switch button.active{
+  color:#c4b5fd;
+  border-color:#8b5cf6;
+  background:#241a35;
+}
+.watch-episode-scroll.is-grid .watch-episode-card.is-current .watch-episode-eyebrow{
+  color:#fff;
+}
+@media(max-width:600px){
+  .watch-episode-scroll.is-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+  .watch-episode-scroll.is-grid .watch-episode-card{min-height:34px;aspect-ratio:1.15;padding:5px 2px}
+  .watch-episode-scroll.is-grid .watch-episode-eyebrow{font-size:11px}
+}
+@media(min-width:1500px){
+  .watch-episode-scroll.is-grid{grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+  .watch-episode-scroll.is-grid .watch-episode-card{min-height:42px;font-size:14px}
+}
